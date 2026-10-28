@@ -391,7 +391,7 @@
     .discover-filters { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
     .discover-filter { border: 1px solid var(--line); border-radius: 99px; padding: 5px 8px; background: white; color: var(--muted); font-size: 10px; cursor: pointer; }
     .discover-filter[aria-pressed="true"] { border-color: var(--forest); background: #eef5eb; color: var(--forest); font-weight: 700; }
-    .place { min-width: 118px; border: 1px solid var(--line); background: white; border-radius: 10px; padding: 9px 10px; }
+    .place { min-width: 150px; border: 1px solid var(--line); background: var(--paper); border-radius: 10px; padding: 9px 10px; }
     .place strong { display: block; font-size: 11px; }
     .place span { display: block; font-size: 10px; color: var(--muted); margin-top: 3px; }
     .place .distance { color: var(--green); font-weight: 700; }
@@ -497,6 +497,8 @@
     body.dark-mode #accountButton { background: #286e52; color: white; }
     body.dark-mode .account-profile { background: var(--canvas); }
     body.dark-mode .account-actions button:hover, body.dark-mode .secondary-button:hover { background: #2b4338; }
+    body.dark-mode .step.is-current strong { color: #b6e5c4; }
+    body.dark-mode .step-icon { background: #2b4338; }
     body.dark-mode .toast { background: #d3eee2; color: #103c34; }
     body.dark-mode.high-contrast { --ink: #fff; --muted: #d0ddd5; --line: #8aab97; --canvas: #0b140e; }
     @media (max-width: 1000px) {
