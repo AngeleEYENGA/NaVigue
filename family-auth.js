@@ -9,6 +9,7 @@
     selectedChildId: "",
     activeChild: null,
     favorites: [],
+    displayName: "",
     creatingAccount: false,
     loading: false
   };
@@ -27,13 +28,39 @@
   window.NavigueFamilyAuth = {
     get activeChild() { return state.activeChild; },
     get configured() { return configured; },
+    get displayName() { return state.displayName; },
+    get signedIn() { return Boolean(state.user); },
+    get childFavorites() {
+      return state.activeChild
+        ? state.favorites.filter((place) => place.child_id === state.activeChild.id)
+        : [];
+    },
     kidMode: false,
-    openAccount: openDialog
+    openAccount: openDialog,
+    setAccountStatus: setStatus
   };
 
   function setStatus(message, isError = false) {
     status.textContent = message;
     status.classList.toggle("is-error", isError);
+  }
+
+  function displayNameFor(user) {
+    const metadata = user?.user_metadata || {};
+    const profileName = metadata.display_name || metadata.full_name || metadata.name;
+    if (typeof profileName === "string" && profileName.trim()) {
+      return profileName.trim().split(/\s+/)[0];
+    }
+    const emailName = user?.email?.split("@")[0]?.replace(/[._-]+/g, " ").trim();
+    return emailName ? emailName.split(/\s+/)[0] : "vous";
+  }
+
+  function familyErrorMessage(error) {
+    if (error?.code === "PGRST205" || error?.code === "42P01"
+      || /child_profiles|favorite_places|schema cache/i.test(error?.message || "")) {
+      return "Les tables des profils enfant ne sont pas prêtes dans Supabase. Exécutez le fichier supabase-schema.sql dans le SQL Editor du projet.";
+    }
+    return error?.message || "Erreur inattendue.";
   }
 
   function renderParentFavorites() {
@@ -57,6 +84,10 @@
       remove.addEventListener("click", () => deleteFavorite(place));
       row.append(detail, remove);
       parentFavoriteList.append(row);
+    });
+    document.getElementById("favoriteRelation").addEventListener("change", (event) => {
+      const relation = event.currentTarget.value;
+      document.getElementById("favoriteLabel").value = `Chez ${relation === "autre" ? "un proche" : relation === "ami" ? "un ami" : relation[0].toUpperCase() + relation.slice(1)}`;
     });
     if (state.selectedChildId && !places.length) {
       const empty = document.createElement("p");
@@ -196,30 +227,42 @@
       state.activeChild = null;
       window.applyKidsMode?.(false, false);
     }
-    document.getElementById("signedInEmail").textContent = `Connecté : ${state.user.email || "compte adulte"}`;
+    state.displayName = displayNameFor(state.user);
+    document.getElementById("signedInEmail").textContent = `Bienvenue, ${state.displayName} · ${state.user.email || "compte adulte"}`;
+    document.getElementById("accountDisplayName").value = state.user.user_metadata?.display_name
+      || state.user.user_metadata?.full_name
+      || state.user.user_metadata?.name
+      || state.displayName;
+    window.setNavigueAccountGreeting?.(state.displayName);
     authPanel.hidden = true;
     familyPanel.hidden = false;
-    document.getElementById("accountButton").textContent = "Compte adulte";
+    document.getElementById("accountButton").textContent = "Mon compte";
+    document.getElementById("accountButton").setAttribute("aria-label", `Espace compte de ${state.displayName}`);
     document.getElementById("kidsToggle").textContent = state.activeChild ? `Mode enfant : ${state.activeChild.child_name}` : "Choisir un profil enfant";
     renderParentChildren();
     renderParentFavorites();
     renderKidFavorites();
-    setStatus("Compte adulte connecté. Les adresses enregistrées ne sont visibles que par ce compte et ses profils enfant.");
+    setStatus("Compte adulte connecté. Gérez ici votre nom affiché, les profils enfant et leurs adresses favorites.");
     state.loading = false;
   }
 
-  async function refreshSession(session) {
+  let welcomedUserId = "";
+  async function refreshSession(session, eventName = "") {
     state.user = session?.user || null;
     if (!state.user) {
+      welcomedUserId = "";
       state.children = [];
       state.favorites = [];
       state.selectedChildId = "";
       state.activeChild = null;
+      state.displayName = "";
       window.applyKidsMode?.(false, false);
+      window.setNavigueAccountGreeting?.("");
       authPanel.hidden = false;
       familyPanel.hidden = true;
       childDestinations.classList.remove("is-visible");
       document.getElementById("accountButton").textContent = "Compte adulte";
+      document.getElementById("accountButton").setAttribute("aria-label", "Connexion ou compte adulte");
       document.getElementById("kidsToggle").textContent = "Mode enfant";
       document.getElementById("kidsToggle").setAttribute("aria-label", "Choisir un profil enfant");
       parentFavoriteList.hidden = true;
@@ -229,8 +272,14 @@
     }
     try {
       await loadFamily();
+      if (eventName === "SIGNED_IN" && welcomedUserId !== state.user.id) {
+        welcomedUserId = state.user.id;
+        if (localStorage.getItem("navigueVoiceEnabled") === "true") {
+          window.speakNavigueText?.(`Bienvenue ${state.displayName}, je suis NaVigue. Dis-moi où tu veux aller, et je t’aiderai pas à pas.`);
+        }
+      }
     } catch (error) {
-      setStatus(`Impossible de charger les profils : ${error.message}`, true);
+      setStatus(`Impossible de charger les profils : ${familyErrorMessage(error)}`, true);
       state.loading = false;
     }
   }
@@ -365,6 +414,32 @@
   document.getElementById("adultEmailForm").addEventListener("submit", (event) => {
     handleEmailAuth(event).catch((error) => setStatus(`Connexion impossible : ${error.message}`, true));
   });
+  document.getElementById("accountProfileForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!state.client || !state.user) {
+      setStatus("Connectez-vous pour modifier votre compte.", true);
+      return;
+    }
+    const displayName = document.getElementById("accountDisplayName").value.trim();
+    if (!displayName) {
+      setStatus("Saisissez un prénom à afficher.", true);
+      return;
+    }
+    try {
+      const { data, error } = await state.client.auth.updateUser({
+        data: { display_name: displayName, full_name: displayName }
+      });
+      if (error) throw error;
+      state.user = data.user;
+      state.displayName = displayNameFor(data.user);
+      document.getElementById("signedInEmail").textContent = `Bienvenue, ${state.displayName} · ${state.user.email || "compte adulte"}`;
+      document.getElementById("accountDisplayName").value = displayName;
+      window.setNavigueAccountGreeting?.(state.displayName);
+      setStatus("Votre nom affiché a été mis à jour.");
+    } catch (error) {
+      setStatus(`Impossible de mettre à jour le compte : ${error.message}`, true);
+    }
+  });
   document.getElementById("accountModeToggle").addEventListener("click", (event) => {
     state.creatingAccount = !state.creatingAccount;
     document.getElementById("adultEmailSubmit").textContent = state.creatingAccount ? "Créer mon compte adulte" : "Se connecter";
@@ -385,7 +460,10 @@
 
   document.getElementById("childProfileForm").addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (!state.client || !state.user) return;
+    if (!state.client || !state.user) {
+      setStatus("Connectez-vous avec un compte adulte pour créer un profil enfant.", true);
+      return;
+    }
     const input = document.getElementById("childProfileName");
     const childName = input.value.trim();
     if (!childName) return;
@@ -421,10 +499,6 @@
         label,
         address
       });
-      document.getElementById("favoriteRelation").addEventListener("change", (event) => {
-        const relation = event.currentTarget.value;
-        document.getElementById("favoriteLabel").value = `Chez ${relation === "autre" ? "un proche" : relation === "ami" ? "un ami" : relation[0].toUpperCase() + relation.slice(1)}`;
-      });
       if (error) throw error;
       document.getElementById("favoriteAddress").value = "";
       await loadFamily();
@@ -443,13 +517,13 @@
   } else {
     setupNotice.hidden = true;
     checkAuthProviders();
-    state.client.auth.onAuthStateChange((_event, session) => {
-      window.setTimeout(() => refreshSession(session), 0);
+    state.client.auth.onAuthStateChange((event, session) => {
+      window.setTimeout(() => refreshSession(session, event), 0);
     });
     state.client.auth.getSession()
       .then(({ data, error }) => {
         if (error) throw error;
-        return refreshSession(data.session);
+        return refreshSession(data.session, "INITIAL_SESSION");
       })
       .catch((error) => setStatus(`Impossible de vérifier la session : ${error.message}`, true));
   }

@@ -1,11 +1,11 @@
-const CACHE_NAME = "navigue-app-shell-v4";
+const CACHE_NAME = "navigue-app-shell-v5";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./icon.svg",
   "./wordmark-navigue.svg",
   "./supabase-config.js?v=2",
-  "./family-auth.js?v=2"
+  "./family-auth.js?v=3"
 ];
 
 self.addEventListener("install", (event) => {

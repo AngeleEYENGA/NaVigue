@@ -27,6 +27,7 @@ Le callback OAuth Google/Microsoft reste l’URL du projet Supabase et non le do
 
 - Calcul d’itinéraires piéton, vélo, voiture et transports en commun.
 - Consignes étape par étape et assistance vocale.
+- Conversation vocale à la demande : NaVigue comprend des demandes de trajet formulées simplement, peut répéter une consigne et répond avec la voix française disponible dans le navigateur. La qualité et la disponibilité de la voix/reconnaissance varient selon le navigateur et l’appareil ; la reconnaissance vocale peut être traitée par le navigateur ou son fournisseur.
 - Vues carte, perspective et rue, selon la couverture des services cartographiques.
-- Mode enfant avec profils gérés par un parent et adresses favorites préparées à l’avance.
+- Espace de compte adulte avec nom d’accueil personnalisé, profils enfant gérés par le parent et destinations favorites préparées à l’avance. Les enfants n’ont pas de connexion autonome : un adulte ouvre leur profil et le mode enfant limite les destinations aux adresses enregistrées.
 - Application web installable (PWA) sur les navigateurs compatibles.

@@ -101,9 +101,20 @@
     .family-form[hidden], [hidden] { display: none !important; }
     .account-topline { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .account-topline strong { overflow-wrap: anywhere; }
+    .account-profile { margin: 14px 0 17px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: #f8faf6; }
+    .account-profile h3 { margin: 0 0 3px; font-size: 15px; }
+    .account-profile p { margin: 0 0 8px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .account-profile-form { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 9px; }
+    .account-profile-form .account-field { margin: 0; }
+    .account-profile-form button { min-height: 43px; padding: 8px 12px; }
+    .intro .eyebrow[aria-live="polite"] { min-height: 1em; }
+    .assistant-actions { flex-wrap: wrap; }
+    .assistant-actions .secondary-button { min-height: 39px; padding: 0 12px; font-size: 11px; }
+    #conversationButton[aria-pressed="true"] { border-color: #b43e31; background: #fff0ed; color: #8f2d24; }
     @media (max-width: 520px) {
       .family-form { grid-template-columns: 1fr; }
       .family-form .wide, .family-form .primary { grid-column: auto; }
+      .account-profile-form { grid-template-columns: 1fr; }
       .account-content { padding: 17px; }
     }
 
@@ -376,7 +387,7 @@
     <main>
       <section class="intro" aria-labelledby="pageTitle">
         <div>
-          <p class="eyebrow">Votre compagnon de route</p>
+          <p class="eyebrow" id="welcomeLine" aria-live="polite">Votre compagnon de route</p>
           <h1 id="pageTitle">On y va ensemble&nbsp;?</h1>
           <p>Une destination, des explications claires. NaVigue s’occupe du chemin.</p>
         </div>
@@ -430,11 +441,12 @@
           <span class="assistant-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4M8 22h8"/></svg></span>
           <div class="assistant-copy">
             <strong id="assistantTitle">Bonjour, je suis NaVigue.</strong>
-            <p id="assistantMessage">Touchez « Activer la voix » pour entendre mon accueil. Micro et position ne sont demandés que lorsque vous les utilisez.</p>
+            <p id="assistantMessage">Touchez « Parler avec NaVigue » pour échanger à voix haute. Le micro ne s’active qu’à votre demande ; la reconnaissance vocale dépend de votre navigateur.</p>
           </div>
         </div>
         <div class="assistant-actions">
           <button class="primary" id="assistantButton" type="button">Activer la voix</button>
+          <button class="secondary-button" id="conversationButton" type="button" aria-pressed="false">Parler avec NaVigue</button>
           <button class="voice-button" id="dictationButton" type="button" aria-label="Dicter une destination" title="Dicter une destination">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1M12 18v4M8 22h8"/></svg>
           </button>
@@ -742,6 +754,16 @@
       </section>
       <section id="familyPanel" hidden>
         <div class="account-topline"><strong id="signedInEmail"></strong><button class="secondary-button" id="signOutButton" type="button">Se déconnecter</button></div>
+        <section class="account-profile" aria-labelledby="accountProfileTitle">
+          <h3 id="accountProfileTitle">Mon compte</h3>
+          <p>Choisissez le prénom que NaVigue utilisera pour vous accueillir.</p>
+          <form class="account-profile-form" id="accountProfileForm">
+            <label class="account-field" for="accountDisplayName">Prénom affiché
+              <input id="accountDisplayName" maxlength="60" autocomplete="given-name" required>
+            </label>
+            <button class="secondary-button" type="submit">Enregistrer</button>
+          </form>
+        </section>
         <div class="family-manager">
           <h3>Profils enfant et adresses favorites</h3>
           <p>Ajoutez d’abord un profil, puis préparez des destinations comme Papa, Maman ou un ami. Les lieux et adresses sont privés au compte adulte.</p>
@@ -796,6 +818,12 @@
     let nearbyPlacesGeneration = 0;
     let lastRouteSearchKey = "";
     let kidMode = false;
+    let activeConversation = false;
+    let conversationRecognition;
+    let conversationWaitingForSpeech = false;
+    let conversationAwaitingDestination = false;
+    let conversationRestartTimer;
+    let stopConversationAfterReply = false;
     const geocodeCache = new Map();
     function showToast(message) {
       toast.textContent = message;
@@ -1451,7 +1479,16 @@
       });
     });
 
-    function speakText(text) {
+    function chooseSpeechVoice(language) {
+      const voices = window.speechSynthesis.getVoices();
+      const languagePrefix = language.split("-")[0].toLowerCase();
+      return voices.find((voice) => voice.lang.toLowerCase() === language.toLowerCase())
+        || voices.find((voice) => voice.lang.toLowerCase().startsWith(`${languagePrefix}-`))
+        || voices.find((voice) => voice.lang.toLowerCase().startsWith(languagePrefix))
+        || null;
+    }
+
+    function speakText(text, onEnd) {
       if (!("speechSynthesis" in window)) {
         showToast("La lecture vocale n’est pas disponible dans ce navigateur.");
         return false;
@@ -1461,10 +1498,14 @@
       const language = localStorage.getItem("navigueLanguage") || "fr-FR";
       utterance.lang = language;
       utterance.rate = Number(localStorage.getItem("navigueSpeechRate") || "0.85");
+      utterance.pitch = 1;
+      utterance.voice = chooseSpeechVoice(language);
+      utterance.onend = () => onEnd?.();
       utterance.onerror = (event) => {
         if (event.error !== "canceled" && event.error !== "interrupted") {
           showToast("La lecture vocale a échoué. Touchez le bouton de voix pour réessayer.");
         }
+        onEnd?.();
       };
       window.speechSynthesis.speak(utterance);
       return true;
@@ -1472,12 +1513,183 @@
 
     function welcomeMessage() {
       const language = localStorage.getItem("navigueLanguage") || "fr-FR";
+      const userName = window.NavigueFamilyAuth?.displayName;
+      const greeting = userName ? `Bienvenue ${userName}, ` : "Bienvenue sur NaVigue. ";
       const messages = {
-        "fr-FR": "Bienvenue sur NaVigue. Je suis là pour vous guider, pas à pas et à votre rythme.",
+        "fr-FR": `${greeting}je suis NaVigue. Dis-moi où tu veux aller, ou demande-moi de répéter une consigne. On avancera tranquillement, étape par étape.`,
         "en-US": "Welcome to NaVigue. I am here to guide you, one step at a time, at your own pace.",
         "es-ES": "Te damos la bienvenida a NaVigue. Estoy aquí para guiarte paso a paso y a tu ritmo."
       };
-      return messages[language];
+      return messages[language] || messages["fr-FR"];
+    }
+
+    function setAssistantMessage(title, message) {
+      document.getElementById("assistantTitle").textContent = title;
+      document.getElementById("assistantMessage").textContent = message;
+    }
+
+    window.speakNavigueText = speakText;
+    window.setNavigueAccountGreeting = (name) => {
+      document.getElementById("welcomeLine").textContent = name
+        ? `Bienvenue, ${name} !`
+        : "Votre compagnon de route";
+      if (!kidMode) {
+        setAssistantMessage(
+          name ? `Bonjour ${name}, je suis NaVigue.` : "Bonjour, je suis NaVigue.",
+          name
+            ? "Dis-moi où tu veux aller, ou demande-moi de répéter une consigne. On avancera tranquillement, étape par étape."
+            : "Touchez « Parler avec NaVigue » pour échanger à voix haute. Le micro ne s’active qu’à votre demande ; la reconnaissance vocale dépend de votre navigateur."
+        );
+      }
+    };
+
+    function beginConversationListening() {
+      if (!activeConversation || !conversationRecognition || conversationWaitingForSpeech) return;
+      window.clearTimeout(conversationRestartTimer);
+      conversationRestartTimer = window.setTimeout(() => {
+        if (!activeConversation || conversationWaitingForSpeech) return;
+        try {
+          conversationRecognition.start();
+          setAssistantMessage("Je t’écoute.", "Tu peux parler naturellement. Dis « arrête » pour terminer la conversation.");
+        } catch (error) {
+          if (error.name !== "InvalidStateError") {
+            setAssistantMessage("Je n’arrive pas à écouter pour le moment.", "Vérifie l’autorisation du micro dans les réglages de ton navigateur, puis réessaie.");
+            stopConversation();
+          }
+        }
+      }, 450);
+    }
+
+    function stopConversation() {
+      activeConversation = false;
+      conversationWaitingForSpeech = false;
+      conversationAwaitingDestination = false;
+      stopConversationAfterReply = false;
+      window.clearTimeout(conversationRestartTimer);
+      if (conversationRecognition) {
+        conversationRecognition.onend = null;
+        conversationRecognition.onerror = null;
+        conversationRecognition.onresult = null;
+        try {
+          conversationRecognition.stop();
+        } catch (error) {
+          if (error.name !== "InvalidStateError") throw error;
+        }
+        conversationRecognition = undefined;
+      }
+      document.getElementById("conversationButton").setAttribute("aria-pressed", "false");
+      document.getElementById("conversationButton").textContent = "Parler avec NaVigue";
+    }
+
+    function cleanSpokenDestination(text) {
+      const normalized = text.trim().replace(/[.!?,;:]+$/g, "");
+      const command = /^(?:na[v]igue[, ]*)?(?:(?:je veux|je voudrais|j['’]aimerais)\s+(?:aller|me rendre)\s+(?:a|à|au|aux|chez|vers)|emm[eè]ne[- ]moi\s+(?:a|à|au|aux|chez|vers)|conduis[- ]moi\s+(?:a|à|au|aux|chez|vers)|trouve(?:[- ]moi)?\s+(?:un )?(?:itin[eé]raire|chemin)\s+(?:vers|pour)|pour aller\s+(?:a|à|au|aux|chez|vers)|itin[eé]raire\s+(?:vers|pour)|va\s+(?:a|à|au|aux|chez|vers))\s+/i;
+      const directPlace = /^(?:a|à|au|aux|chez|vers)\s+/i;
+      return normalized.replace(command, "").replace(directPlace, "").trim();
+    }
+
+    function handleConversationInput(rawText) {
+      const text = rawText.trim();
+      const normalized = text.toLocaleLowerCase("fr-FR").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[.!?,;:]/g, "");
+      if (/^(stop|arrete|arret|annule|au revoir|aurevoir|c'est tout|merci c'est tout)$/.test(normalized)) {
+        stopConversationAfterReply = true;
+        return "D’accord, j’arrête de t’écouter. Tu peux me reparler quand tu veux.";
+      }
+      if (/\b(merci|super|genial)\b/.test(normalized)) return "Avec plaisir. Tu veux que je t’aide pour autre chose ?";
+      if (/\b(repete|recommence|prochaine etape|consigne)\b/.test(normalized)) {
+        conversationAwaitingDestination = false;
+        return currentVoiceInstruction();
+      }
+      if (/^(bonjour|salut|coucou|hello|bonsoir|ca va|comment ca va)$/.test(normalized)) {
+        return "Bonjour ! Je suis là avec toi. Où aimerais-tu aller ?";
+      }
+
+      const destination = conversationAwaitingDestination ? text : cleanSpokenDestination(text);
+      if (destination && destination.length > 1 && destination.length < 180
+        && !/^(aide|que peux tu faire|comment ca marche|quel temps|quelle heure)/i.test(normalized)) {
+        conversationAwaitingDestination = false;
+        const destinationInput = document.getElementById("destination");
+        if (kidMode) {
+          const normalizePlace = (value) => value.toLocaleLowerCase("fr-FR").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+          const place = window.NavigueFamilyAuth?.childFavorites?.find((favorite) =>
+            normalizePlace(favorite.label) === normalizePlace(destination)
+            || normalizePlace(favorite.label.replace(/^chez\s+/i, "")) === normalizePlace(destination)
+            || normalizePlace(favorite.address) === normalizePlace(destination));
+          if (!place) {
+            conversationAwaitingDestination = true;
+            return "Pour ta sécurité, tu peux choisir une destination préparée par ton parent. Regarde les cartes « Papa », « Maman » ou « Un ami » au-dessus.";
+          }
+          destinationInput.value = place.address;
+          const reminder = "Demande à l’adulte qui t’accompagne de vérifier le trajet avec toi. ";
+          window.setTimeout(() => document.getElementById("journeyForm").requestSubmit(), 300);
+          return `${reminder}Je prépare le trajet vers ${place.label}.`;
+        }
+        destinationInput.value = destination;
+        window.setTimeout(() => document.getElementById("journeyForm").requestSubmit(), 300);
+        return `D’accord, je prépare le trajet vers ${destination}. Tu pourras me demander de répéter une étape ou de choisir un autre mode de transport.`;
+      }
+      if (/^(aide|que peux tu faire|comment ca marche)$/.test(normalized)) {
+        conversationAwaitingDestination = true;
+        return "Tu peux me dire, par exemple, « je veux aller au Louvre », ou simplement donner le nom d’un lieu. Je peux aussi répéter une consigne.";
+      }
+      conversationAwaitingDestination = true;
+      return "Bien sûr. Où veux-tu aller ? Tu peux me dire une adresse, un lieu, ou simplement le nom de ta destination.";
+    }
+
+    function startConversation() {
+      const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!Recognition) {
+        showToast("La conversation vocale n’est pas prise en charge par ce navigateur. Essaie Chrome ou dicte une destination.");
+        return;
+      }
+      if (activeConversation) {
+        stopConversation();
+        setAssistantMessage("Je suis là si tu as besoin.", "La conversation est en pause. Tu peux la reprendre quand tu veux.");
+        return;
+      }
+      activeConversation = true;
+      conversationAwaitingDestination = false;
+      conversationRecognition = new Recognition();
+      conversationRecognition.lang = localStorage.getItem("navigueLanguage") || "fr-FR";
+      conversationRecognition.interimResults = false;
+      conversationRecognition.continuous = false;
+      conversationRecognition.maxAlternatives = 1;
+      conversationRecognition.onresult = (event) => {
+        const userText = event.results?.[0]?.[0]?.transcript || "";
+        if (!userText.trim()) return;
+        conversationWaitingForSpeech = true;
+        const reply = handleConversationInput(userText);
+        setAssistantMessage("NaVigue te répond", reply);
+        const continueConversation = () => {
+          conversationWaitingForSpeech = false;
+          if (stopConversationAfterReply) {
+            stopConversation();
+            setAssistantMessage("Je suis là si tu as besoin.", "La conversation est terminée. Tu peux me reparler quand tu veux.");
+          } else {
+            beginConversationListening();
+          }
+        };
+        if (!speakText(reply, continueConversation)) continueConversation();
+      };
+      conversationRecognition.onerror = (event) => {
+        if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+          setAssistantMessage("Le micro n’est pas autorisé.", "Autorise le micro dans ton navigateur pour parler avec NaVigue.");
+          stopConversation();
+          return;
+        }
+        if (event.error !== "no-speech" && event.error !== "aborted") {
+          setAssistantMessage("Je n’ai pas bien entendu.", "Tu peux réessayer ou choisir « Dicter une destination ».");
+        }
+      };
+      conversationRecognition.onend = () => {
+        if (activeConversation && !conversationWaitingForSpeech) beginConversationListening();
+      };
+      document.getElementById("conversationButton").setAttribute("aria-pressed", "true");
+      document.getElementById("conversationButton").textContent = "Arrêter la conversation";
+      setAssistantMessage("NaVigue est à l’écoute.", "Le navigateur peut demander l’autorisation du micro. Tu peux arrêter la conversation à tout moment.");
+      if (!speakText("Bonjour, je suis NaVigue. Où aimerais-tu aller ?", () => beginConversationListening())) {
+        beginConversationListening();
+      }
     }
 
     function setPendingInstructions(title, detail) {
@@ -1637,6 +1849,17 @@
 
     document.getElementById("journeyForm").addEventListener("submit", (event) => {
       event.preventDefault();
+      if (kidMode) {
+        const destination = document.getElementById("destination").value.trim();
+        const normalizePlace = (value) => value.toLocaleLowerCase("fr-FR").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        const isParentApproved = window.NavigueFamilyAuth?.childFavorites?.some((place) =>
+          normalizePlace(place.address) === normalizePlace(destination));
+        if (!isParentApproved) {
+          setRouteStatus("En mode enfant, choisis une destination préparée par ton parent dans les cartes de confiance.", true);
+          document.getElementById("childDestinations").scrollIntoView({ behavior: "smooth", block: "center" });
+          return;
+        }
+      }
       const submit = event.currentTarget.querySelector('button[type="submit"]');
       submit.disabled = true;
       setRouteStatus("Recherche des adresses et calcul de l’itinéraire…");
@@ -1755,13 +1978,20 @@
       localStorage.setItem("navigueVoiceEnabled", String(enabled));
       document.getElementById("welcomeSetting").checked = enabled;
       document.getElementById("assistantButton").textContent = enabled ? "Désactiver la voix" : "Activer la voix";
-      document.getElementById("assistantTitle").textContent = enabled ? "Votre assistant vocal est prêt." : "Bonjour, je suis NaVigue.";
-      document.getElementById("assistantMessage").textContent = enabled
-        ? "L’accueil vocal est activé pour vos prochaines visites. Touchez le haut-parleur pour entendre une consigne."
-        : "La voix est désactivée. Le micro ne sera demandé que si vous lancez la dictée.";
+      setAssistantMessage(
+        enabled ? "Je suis là pour t’aider." : "La voix est désactivée.",
+        enabled
+          ? "Tu peux me parler avec le bouton de conversation, ou toucher le haut-parleur pour entendre une consigne."
+          : "Active la voix quand tu veux entendre mes réponses. Le micro ne sera demandé que si tu lances la dictée ou la conversation."
+      );
       if (enabled) speakText(welcomeMessage());
-      else if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+      else {
+        stopConversation();
+        if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+      }
     });
+
+    document.getElementById("conversationButton").addEventListener("click", startConversation);
 
     document.getElementById("dictationButton").addEventListener("click", () => {
       const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1835,7 +2065,10 @@
         : "La voix est désactivée. Le micro ne sera demandé que si vous lancez la dictée.";
       document.getElementById("settingsDialog").close();
       if (voiceEnabled && !voiceWasEnabled) speakText(welcomeMessage());
-      else if (!voiceEnabled && "speechSynthesis" in window) window.speechSynthesis.cancel();
+      else if (!voiceEnabled) {
+        stopConversation();
+        if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+      }
       showToast("Vos préférences ont été enregistrées sur cet appareil.");
     });
 
@@ -1920,8 +2153,12 @@
 
     document.getElementById("kidsToggle").addEventListener("click", () => {
       if (!window.NavigueFamilyAuth?.activeChild) {
-        document.getElementById("accountDialog").showModal();
-        document.getElementById("accountButton").focus();
+        window.NavigueFamilyAuth?.openAccount?.();
+        window.NavigueFamilyAuth?.setAccountStatus?.(
+          window.NavigueFamilyAuth?.signedIn
+            ? "Choisissez « Ouvrir » sur le profil enfant à accompagner, ou créez d’abord son profil."
+            : "Un parent ou tuteur doit se connecter pour créer et choisir un profil enfant."
+        );
         return;
       }
       applyKidsMode(!kidMode);
@@ -1997,6 +2234,6 @@
     }
     applyKidsMode(false, false);
   </script>
-  <script src="./family-auth.js?v=2"></script>
+  <script src="./family-auth.js?v=3"></script>
 </body>
 </html>
