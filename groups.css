@@ -1,0 +1,51 @@
+.groups-dialog, .groups-dialog * { box-sizing: border-box; }
+.groups-dialog { width: min(960px, calc(100vw - 24px)); max-height: 92dvh; border: 1px solid var(--line); border-radius: 20px; padding: 0; background: var(--paper); color: var(--ink); }
+.groups-dialog::backdrop { background: #071b14a6; }
+.groups-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 20px; border-bottom: 1px solid var(--line); }
+.groups-heading h2 { margin: 0; font-size: 21px; }
+.groups-body { padding: 20px; }
+.groups-toolbar, .groups-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.groups-dialog button, .groups-dialog input, .groups-dialog select, .groups-dialog textarea { font: inherit; }
+.groups-dialog button { cursor: pointer; }
+.groups-dialog input:not([type=checkbox]):not([type=file]), .groups-dialog select, .groups-dialog textarea { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--canvas); color: var(--ink); font-size: 16px; }
+.groups-dialog textarea { resize: vertical; }
+.groups-dialog label { display: block; font-size: 13px; color: var(--muted); line-height: 1.55; }
+.groups-dialog label > input, .groups-dialog label > textarea { margin-top: 5px; }
+.groups-dialog form { display: grid; gap: 10px; }
+.groups-toolbar select { flex: 1; min-width: 160px; }
+.groups-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 18px 0; }
+.groups-tabs button { padding: 10px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ink); min-height: 44px; }
+.groups-tabs button[aria-pressed=true] { background: var(--forest); color: #fff; border-color: var(--forest); }
+.groups-note, .groups-status { color: var(--muted); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.groups-status.is-error { color: #b33428; }
+body.dark-mode .groups-status.is-error { color: #ffb2a7; }
+.groups-setup { padding: 14px; background: var(--amber); border-radius: 12px; }
+.groups-section { padding: 14px 0; }
+.groups-messages { max-height: 340px; overflow-y: auto; display: grid; gap: 10px; padding: 12px; background: var(--canvas); border-radius: 12px; margin-bottom: 12px; }
+.groups-message { padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+.groups-message p { margin: 5px 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; }
+.groups-message small { color: var(--muted); }
+.groups-map { height: 300px; border-radius: 12px; overflow: hidden; background: var(--canvas); margin: 14px 0; }
+.groups-sharing { padding: 14px; border: 1px solid var(--line); border-radius: 12px; }
+.groups-sharing label { display: flex; align-items: flex-start; gap: 9px; color: var(--ink); }
+.groups-sharing input { margin-top: 5px; flex: 0 0 auto; }
+.groups-sharing .groups-actions { margin-top: 12px; }
+.groups-member { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.groups-gallery { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin: 12px 0; }
+.groups-media { padding: 12px; border: 1px solid var(--line); border-radius: 12px; min-width: 0; }
+.groups-media p { overflow-wrap: anywhere; }
+.groups-preview img, .groups-preview video { display: block; max-width: 100%; max-height: 340px; margin: 12px auto; border-radius: 12px; }
+.groups-invite { display: block; padding: 12px; background: var(--canvas); border: 1px solid var(--line); border-radius: 12px; overflow-wrap: anywhere; user-select: all; }
+.groups-dialog details { border: 1px solid var(--line); padding: 12px; border-radius: 12px; margin-top: 12px; }
+.groups-dialog summary { cursor: pointer; font-weight: 700; margin-bottom: 10px; }
+.groups-dialog button:disabled { opacity: .55; cursor: wait; }
+@media(max-width:640px) {
+  header #groupsButton { grid-column: 1 / -1; grid-row: 3; }
+  header .header-right #installButton { grid-row: 4; }
+  .groups-body { padding: 15px; }
+  .groups-heading { padding: 15px; }
+  .groups-gallery { grid-template-columns: 1fr; }
+  .groups-tabs { display: grid; grid-template-columns: 1fr 1fr; }
+  .groups-toolbar { align-items: stretch; }
+  .groups-actions button { flex: 1; min-height: 44px; }
+}

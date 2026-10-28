@@ -51,3 +51,7 @@ Le parcours direct et chaque détour proposé sont calculés par le service de r
 Le budget reste un souhait : aucun prix de menu ou billet n’est inventé ou garanti. Un budget nul restreint les visites aux parcs et monuments extérieurs (gratuité à confirmer), avec les services de santé si demandés. Prix, accessibilité et horaires doivent être vérifiés auprès des lieux. Cette première version n’annonce pas de recommandations automatiques pendant la marche et n’ajoute pas les pauses au guidage. « Afficher le trajet direct » réutilise la carte et le guidage existants ; les fiches permettent d’inspecter les lieux sur OpenStreetMap.
 
 La fonctionnalité est traduite dans les cinq langues et désactivée en mode enfant. Tests : `node tests/regression.cjs` et `node tests/outing.cjs`.
+
+## Groupes de voyage privés
+
+Le menu comprend un espace de groupes (compte adulte) : invitations privées, messagerie, carte des positions volontairement partagées, préparation du voyage et galerie photo/vidéo avec capture selon l’appareil. **L’activation de la migration `supabase-groups.sql` sur le serveur est nécessaire.** Voir [GROUPS.md](./GROUPS.md) pour l’installation, les limites et les tests. Aucun partage GPS ni envoi de média n’est lancé automatiquement.

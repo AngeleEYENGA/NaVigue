@@ -10,6 +10,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>NaVigue — Tous les chemins, à votre rythme</title>
   <link rel="stylesheet" href="./outing.css?v=1">
+  <link rel="stylesheet" href="./groups.css?v=1">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./icon.svg">
@@ -581,6 +582,7 @@
         <button class="round-button" id="languageButton" aria-label="Choisir la langue" title="Langue : français">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>
         </button>
+        <button class="header-action" id="groupsButton" type="button" aria-haspopup="dialog" aria-controls="groupsDialog">Mes groupes de voyage</button>
         <button class="header-action" id="accountButton" type="button" aria-label="Connexion ou compte adulte">Compte adulte</button>
       </nav>
     </header>
@@ -2667,7 +2669,7 @@
       if (event.key === 'Escape' && navToggle.getAttribute('aria-expanded') === 'true') closeNavigation(true);
     });
     mainNavigation.addEventListener('click', (event) => {
-      if (event.target.closest('#accountButton, #kidsToggle, #installButton')) closeNavigation();
+      if (event.target.closest('#accountButton, #kidsToggle, #installButton, #groupsButton')) closeNavigation();
     });
     window.matchMedia('(max-width: 640px)').addEventListener('change', () => closeNavigation());
     document.getElementById("languageButton").addEventListener("click", () => document.getElementById("preferencesButton").click());
@@ -2837,8 +2839,10 @@
       if ((localStorage.getItem("navigueTheme") || "system") === "system") applyColorTheme("system");
     });
   </script>
-  <script src="./family-auth.js?v=3"></script>
+  <script src="./family-auth.js?v=4"></script>
   <script src="./outing-core.js?v=1"></script>
   <script src="./outing.js?v=1"></script>
+  <script src="./groups-core.js?v=1"></script>
+  <script src="./groups.js?v=1"></script>
 </body>
 </html>

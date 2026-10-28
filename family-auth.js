@@ -26,6 +26,8 @@
   const childDestinations = document.getElementById("childDestinations");
 
   window.NavigueFamilyAuth = {
+    get client() { return state.client; },
+    get userId() { return state.user?.id || ""; },
     get activeChild() { return state.activeChild; },
     get configured() { return configured; },
     get displayName() { return state.displayName; },
@@ -249,6 +251,7 @@
   let welcomedUserId = "";
   async function refreshSession(session, eventName = "") {
     state.user = session?.user || null;
+    document.dispatchEvent(new Event("navigue:auth"));
     if (!state.user) {
       welcomedUserId = "";
       state.children = [];
@@ -449,6 +452,7 @@
   });
   document.getElementById("signOutButton").addEventListener("click", async () => {
     try {
+      await window.NavigueGroups?.stopSharing();
       const { error } = await state.client.auth.signOut();
       if (error) throw error;
       setStatus("Déconnecté du compte adulte.");
