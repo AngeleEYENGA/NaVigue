@@ -41,3 +41,13 @@ La conversation distingue les salutations, remerciements, demandes d’aide et d
 « À découvrir en chemin » recherche dans un rayon de 5 km autour de la destination : parcs, restauration, culture, hôtels et autres hébergements, motels, bowling et activités (cinéma, piscine, sports, parcs de loisirs, etc.). La disponibilité dépend des lieux référencés dans OpenStreetMap et du service Photon. Une panne du service est signalée séparément d’une absence de résultats.
 
 Vérification des régressions : `node tests/regression.cjs` (aucune dépendance à installer). Les tests simulent les transcriptions et réponses cartographiques ; ils ne vérifient pas la capture réelle du microphone.
+
+## Organiser ma sortie — première version
+
+Ouvrez « Organiser ma sortie » pour préparer un trajet **à pied** : départ et arrivée explicites, temps disponible, budget souhaité en euros, détour maximal, durée d’une pause et centres d’intérêt. Cette version ne demande pas de géolocalisation et ne conserve pas les réponses après rechargement.
+
+Le parcours direct et chaque détour proposé sont calculés par le service de routage piéton. La recherche interroge Photon autour de quatre points répartis par distance sur le trajet, retient les lieux à moins de 600 m du tracé, puis vérifie jusqu’à huit parcours passant par un lieu pour proposer quatre pauses au maximum. Les suggestions sont triées dans l’ordre du parcours. La durée affichée comprend le trajet complet et **une** pause : les suggestions ne forment pas encore un circuit cumulant plusieurs visites. La recherche est limitée aux trajets à pied de moins de 20 km et n’est pas exhaustive.
+
+Le budget reste un souhait : aucun prix de menu ou billet n’est inventé ou garanti. Un budget nul restreint les visites aux parcs et monuments extérieurs (gratuité à confirmer), avec les services de santé si demandés. Prix, accessibilité et horaires doivent être vérifiés auprès des lieux. Cette première version n’annonce pas de recommandations automatiques pendant la marche et n’ajoute pas les pauses au guidage. « Afficher le trajet direct » réutilise la carte et le guidage existants ; les fiches permettent d’inspecter les lieux sur OpenStreetMap.
+
+La fonctionnalité est traduite dans les cinq langues et désactivée en mode enfant. Tests : `node tests/regression.cjs` et `node tests/outing.cjs`.

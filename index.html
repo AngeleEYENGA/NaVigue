@@ -9,6 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="NaVigue">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>NaVigue — Tous les chemins, à votre rythme</title>
+  <link rel="stylesheet" href="./outing.css?v=1">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./icon.svg">
@@ -617,6 +618,7 @@
         <div class="family-place-grid" id="childFavoriteList" aria-live="polite"></div>
       </section>
 
+      <div id="outingMount"></div>
       <form class="journey-form" id="journeyForm">
         <div class="form-head">
           <h2>Où souhaitez-vous aller&nbsp;?</h2>
@@ -2005,6 +2007,7 @@
       }
       document.getElementById("settingsFootnote").textContent = words.footnote;
       document.getElementById("saveSettings").textContent = words.saveSettings;
+      document.dispatchEvent(new Event("navigue:language"));
     }
 
     function applyColorTheme(theme = localStorage.getItem("navigueTheme") || "system") {
@@ -2675,6 +2678,7 @@
         return;
       }
       kidMode = enabled;
+      document.dispatchEvent(new Event("navigue:child-mode"));
       const childName = window.NavigueFamilyAuth?.activeChild?.child_name;
       document.body.classList.toggle("kids-mode", enabled);
       document.getElementById("kidsToggle").setAttribute("aria-pressed", String(enabled));
@@ -2799,10 +2803,42 @@
     }
     applyKidsMode(false, false);
     applyLanguageUI();
+    window.NavigueGuide = {
+      language: uiLanguage,
+      isChild: () => kidMode,
+      showDirectRoute(plan) {
+        if (kidMode) return;
+        if (!leafletMap || !window.L) throw new Error('Carte indisponible');
+        routeGeneration++;
+        nearbyPlacesGeneration++;
+        active = false;
+        if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+        document.getElementById('mapCard').classList.remove('is-guiding');
+        updateGuidanceButton(false);
+        selectedMode = 'walk';
+        document.querySelectorAll('.mode').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mode === 'walk')));
+        document.getElementById('origin').value = plan.fromText;
+        document.getElementById('destination').value = plan.toText;
+        currentCoordinates = plan.origin;
+        destinationCoordinates = plan.destination;
+        activeRoute = {origin: plan.origin, destination: plan.destination, mode: 'walk', routes: [plan.direct], routeIndex: 0, route: plan.direct};
+        lastRouteSearchKey = `${plan.fromText.toLocaleLowerCase()}|${plan.toText.toLocaleLowerCase()}`;
+        poiLayer?.clearLayers();
+        showRouteOption(plan.direct, plan.origin, plan.destination, 'walk');
+        document.getElementById('alternativeButton').disabled = true;
+        document.getElementById('mapDestination').textContent = `${plan.toText}`;
+        document.getElementById('mapCard').classList.add('has-coordinates');
+        loadNearbyPlaces('all', plan.destination).catch(error => showToast(error.message));
+        document.getElementById('journeyForm').scrollIntoView({behavior: 'smooth', block: 'start'});
+      }
+    };
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => {
       if ((localStorage.getItem("navigueTheme") || "system") === "system") applyColorTheme("system");
     });
   </script>
   <script src="./family-auth.js?v=3"></script>
+  <script src="./outing-core.js?v=1"></script>
+  <script src="./outing.js?v=1"></script>
 </body>
 </html>

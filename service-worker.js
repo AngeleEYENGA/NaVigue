@@ -1,8 +1,11 @@
-const CACHE_NAME = "navigue-app-shell-v8";
+const CACHE_NAME = "navigue-app-shell-v9";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./icon.svg",
+  "./outing.css?v=1",
+  "./outing-core.js?v=1",
+  "./outing.js?v=1",
   "./wordmark-navigue.svg",
   "./supabase-config.js?v=2",
   "./family-auth.js?v=3"
