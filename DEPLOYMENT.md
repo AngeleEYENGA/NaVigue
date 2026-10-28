@@ -1,6 +1,6 @@
 # Héberger et installer NaVigue
 
-NaVigue est un site statique : aucun serveur applicatif ni compilation n’est nécessaire. Il peut être publié gratuitement sur GitHub Pages, Cloudflare Pages ou Netlify. Ces services fournissent une adresse HTTPS, requise pour l’installation de l’application et l’accès à la géolocalisation.
+NaVigue est un site statique : aucun serveur applicatif ni compilation n’est nécessaire. Il peut être publié gratuitement sur Vercel, GitHub Pages, Cloudflare Pages ou Netlify. Ces services fournissent une adresse HTTPS, requise pour l’installation de l’application et l’accès à la géolocalisation.
 
 ## Publication automatique sur Vercel
 
