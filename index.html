@@ -1,0 +1,2002 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f7f1">
+  <meta name="application-name" content="NaVigue">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="NaVigue">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>NaVigue — Tous les chemins, à votre rythme</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icon.svg">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --forest: #164f44;
+      --forest-dark: #103c34;
+      --green: #397755;
+      --lime: #bfe294;
+      --cream: #e6f1d9;
+      --ink: #1b302a;
+      --muted: #687870;
+      --line: #e4e9e2;
+      --paper: #fff;
+      --canvas: #f5f7f1;
+      --amber: #fbf2df;
+      --shadow: 0 16px 42px rgba(24, 55, 45, .08);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; background: var(--canvas); color: var(--ink); }
+    button, input { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, input:focus-visible { outline: 3px solid #8fc66f; outline-offset: 3px; }
+    .shell { max-width: 1440px; margin: auto; padding: 0 5.2%; }
+
+    header { height: 82px; display: flex; align-items: center; justify-content: space-between; }
+    .brand { display: flex; align-items: center; text-decoration: none; }
+    .brand img { display: block; width: 171px; height: auto; }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    .header-note { color: var(--muted); font-size: 13px; }
+    .round-button { width: 42px; height: 42px; border: 1px solid var(--line); background: white; border-radius: 50%; display: grid; place-items: center; cursor: pointer; }
+    .round-button svg { width: 19px; height: 19px; }
+    .profile { border: 0; background: #e9f1e4; color: var(--forest); font-weight: 750; }
+    .header-action { min-height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: white; color: var(--forest); font-size: 12px; font-weight: 750; cursor: pointer; }
+    .header-action svg { width: 17px; height: 17px; }
+    .header-action[hidden] { display: none; }
+    #kidsToggle[aria-pressed="true"] { border-color: #efc95d; background: #fff3c7; color: #694d04; }
+    body.large-text { font-size: 112.5%; }
+    body.large-text .step strong, body.large-text .step small, body.large-text .assistant-copy p { font-size: 1.15em; }
+    body.high-contrast { --ink: #071b14; --muted: #384b42; --line: #9caaa0; --canvas: #fff; }
+    body.high-contrast .card, body.high-contrast .journey-form { border-color: #66776b; }
+    .family-safety-note { display: none; margin: -8px 0 20px; padding: 14px 17px; border: 2px solid #e8ca6c; border-radius: 15px; background: #fff5cf; color: #493b10; font-size: 14px; line-height: 1.55; }
+    .family-safety-note.is-visible { display: flex; align-items: flex-start; gap: 11px; animation: friendly-arrive .45s ease-out both; }
+    .family-safety-note strong { display: block; margin-bottom: 3px; }
+    .family-safety-note p { margin: 0; }
+    .family-destinations { display: none; margin: -5px 0 20px; padding: 18px; border: 1px solid #e8d897; border-radius: 18px; background: #fffaf0; }
+    .family-destinations.is-visible { display: block; animation: friendly-arrive .35s ease-out both; }
+    .family-destinations h2 { margin: 0; font-size: 19px; color: #493b10; }
+    .family-destinations > p { margin: 6px 0 13px; color: #6a5a31; font-size: 13px; }
+    .family-place-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 9px; }
+    .family-place { min-height: 100px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px; padding: 12px; border: 1px solid #eadca6; border-radius: 14px; background: white; color: var(--ink); text-align: left; cursor: pointer; transition: transform .18s, box-shadow .18s; }
+    .family-place:hover, .family-place:focus-visible { transform: translateY(-2px); box-shadow: 0 7px 17px rgba(80, 63, 16, .12); }
+    .family-place-icon { font-size: 27px; animation: traveller-bob 1s ease-in-out infinite alternate; }
+    .family-place strong { font-size: 13px; }
+    .family-place small { max-width: 100%; overflow: hidden; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+    .family-place-empty { grid-column: 1 / -1; padding: 13px; border: 1px dashed #d7c987; border-radius: 12px; color: #6a5a31; font-size: 13px; }
+    .account-dialog { width: min(590px, calc(100vw - 28px)); }
+    .account-content { max-height: min(86vh, 780px); overflow-y: auto; padding: 22px; }
+    .account-note { margin: 12px 0; padding: 11px 13px; border-radius: 11px; background: #f0f6e9; color: var(--forest); font-size: 12px; line-height: 1.5; }
+    .account-note.warning { background: #fff3d4; color: #614d16; }
+    .account-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 9px; margin: 14px 0; }
+    .account-actions button, .secondary-button { min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: white; color: var(--forest); font-weight: 700; cursor: pointer; }
+    .account-actions button:hover, .secondary-button:hover { border-color: var(--green); background: #f4f8f1; }
+    .account-consent { display: flex; align-items: flex-start; gap: 9px; padding: 10px 0; color: var(--ink); font-size: 12px; line-height: 1.45; }
+    .account-consent input { flex: 0 0 auto; margin-top: 2px; accent-color: var(--forest); }
+    .account-field { display: block; margin-top: 11px; color: var(--muted); font-size: 12px; font-weight: 700; }
+    .account-field input, .account-field select { display: block; width: 100%; min-height: 43px; margin-top: 5px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 9px; background: white; color: var(--ink); }
+    .account-toggle { display: block; margin: 10px auto 0; border: 0; background: transparent; color: var(--green); font-size: 12px; font-weight: 700; cursor: pointer; }
+    .account-status { min-height: 20px; margin: 10px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .account-status.is-error { color: #a52e22; }
+    .family-manager { margin-top: 17px; padding-top: 15px; border-top: 1px solid var(--line); }
+    .family-manager h3 { margin: 0 0 5px; font-size: 16px; }
+    .family-manager > p { margin: 0 0 12px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .family-list { display: grid; gap: 8px; margin: 12px 0; }
+    .family-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 11px; }
+    .family-row strong, .family-row small { display: block; }
+    .family-row small { margin-top: 3px; color: var(--muted); font-size: 11px; }
+    .family-row button { min-height: 36px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 9px; background: #fff; color: var(--forest); font-weight: 700; cursor: pointer; }
+    .family-row button.danger { color: #a52e22; }
+    .parent-favorite-list { display: grid; gap: 7px; margin: 10px 0; }
+    .parent-favorite-list[hidden] { display: none; }
+    .family-form { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 12px; }
+    .family-form .account-field { margin: 0; }
+    .family-form .wide { grid-column: 1 / -1; }
+    .family-form .primary { width: 100%; grid-column: 1 / -1; }
+    .family-form[hidden], [hidden] { display: none !important; }
+    .account-topline { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .account-topline strong { overflow-wrap: anywhere; }
+    @media (max-width: 520px) {
+      .family-form { grid-template-columns: 1fr; }
+      .family-form .wide, .family-form .primary { grid-column: auto; }
+      .account-content { padding: 17px; }
+    }
+
+    main { padding: 20px 0 48px; }
+    .intro { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 25px; }
+    .eyebrow { color: var(--green); font-weight: 750; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; margin: 0 0 9px; }
+    h1 { font-size: clamp(29px, 3.2vw, 43px); letter-spacing: -.045em; line-height: 1.08; margin: 0; color: var(--forest-dark); }
+    .intro p { color: var(--muted); margin: 10px 0 0; font-size: 15px; }
+    .safe-pill { white-space: nowrap; border: 1px solid #dfe9d7; color: var(--green); background: #f0f6e9; padding: 10px 14px; border-radius: 99px; display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; }
+    .safe-pill svg { width: 16px; height: 16px; }
+
+    .journey-form { background: var(--paper); border: 1px solid #e8ece6; box-shadow: var(--shadow); border-radius: 19px; padding: 18px 20px 20px; margin-bottom: 22px; }
+    .form-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .form-head h2 { font-size: 16px; margin: 0; letter-spacing: -.02em; }
+    .simple-label { color: var(--muted); font-size: 12px; }
+    .form-grid { display: grid; grid-template-columns: minmax(0, 1fr) 46px minmax(0, 1fr) auto; align-items: end; gap: 12px; }
+    .field label { display: block; color: var(--muted); font-size: 11px; font-weight: 700; margin: 0 0 7px 3px; }
+    .input-wrap { min-height: 49px; display: flex; align-items: center; gap: 10px; padding: 0 13px; border: 1px solid var(--line); border-radius: 11px; }
+    .input-wrap svg { width: 18px; height: 18px; flex: 0 0 auto; color: var(--green); }
+    .input-wrap input { border: 0; outline: 0; min-width: 0; width: 100%; color: var(--ink); background: transparent; font-size: 14px; }
+    .swap { height: 49px; width: 42px; display: grid; place-items: center; border: 0; background: transparent; color: var(--green); cursor: pointer; }
+    .swap svg { width: 20px; height: 20px; }
+    .primary { min-height: 49px; padding: 0 21px; display: flex; align-items: center; justify-content: center; gap: 9px; border: 0; border-radius: 11px; background: var(--forest); color: white; font-weight: 700; cursor: pointer; transition: background .2s, transform .2s; }
+    .primary:hover { background: var(--forest-dark); transform: translateY(-1px); }
+    .primary svg { width: 18px; height: 18px; }
+    .journey-animation { display: none; align-items: center; gap: 10px; margin: 12px 0 2px; padding: 9px 12px; border-radius: 12px; background: #eff6e8; color: var(--forest); font-size: 12px; font-weight: 700; }
+    .journey-animation.is-visible { display: flex; animation: friendly-arrive .4s ease-out both; }
+    .journey-animation svg { width: 116px; height: 28px; overflow: visible; flex: 0 0 auto; }
+    .journey-animation .trail { fill: none; stroke: #91b878; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 4 7; animation: trail-flow 1.3s linear infinite; }
+    .journey-animation .traveller { animation: traveller-bob .7s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: center; }
+    .kids-mode .safe-pill { background: #fff3c7; border-color: #ead081; color: #694d04; }
+    .kids-mode .primary { min-height: 56px; border-radius: 16px; }
+    .kids-mode .mode, .kids-mode .view-button, .kids-mode .discover-filter { min-height: 46px; font-size: 13px; }
+    .kids-mode .input-wrap { min-height: 56px; }
+    .kids-mode .input-wrap input { font-size: 16px; }
+    .kids-mode .mode[data-mode="car"], .kids-mode .mode[data-mode="taxi"], .kids-mode #bookingNote { display: none !important; }
+    .kids-mode .step { padding-bottom: 21px; }
+    .kids-mode .step-icon { width: 36px; height: 36px; font-size: 16px; }
+    .kids-mode .place button { min-height: 40px; font-size: 13px; }
+    .kids-mode .assistant-card { background: #fff3c7; border-color: #ead081; }
+    @keyframes trail-flow { to { stroke-dashoffset: -22; } }
+    @keyframes traveller-bob { to { transform: translateY(-3px) rotate(5deg); } }
+    @keyframes friendly-arrive { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    .kids-mode .journey-animation { background: #fff3c7; }
+    .kids-mode .journey-animation .trail { stroke: #d39a1b; }
+
+    .assistant-card { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 14px 17px; margin: -7px 0 22px; background: #edf4e9; border-color: #dfebd8; }
+    .assistant-intro { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .assistant-icon { width: 40px; height: 40px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 12px; background: var(--forest); color: white; }
+    .assistant-icon svg { width: 21px; height: 21px; }
+    .assistant-copy strong { display: block; font-size: 13px; }
+    .assistant-copy p { margin: 4px 0 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+    .assistant-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+    .assistant-actions .primary { min-height: 39px; padding: 0 13px; font-size: 11px; }
+    .assistant-actions .voice-button { min-width: 40px; min-height: 39px; }
+
+    .workspace { display: grid; grid-template-columns: minmax(330px, .82fr) minmax(0, 1.55fr); gap: 22px; align-items: stretch; }
+    .left-column { display: flex; flex-direction: column; gap: 15px; }
+    .card { background: var(--paper); border: 1px solid #e8ece6; border-radius: 18px; box-shadow: 0 8px 26px rgba(24, 55, 45, .045); }
+    .route-card { padding: 18px 19px 16px; }
+    .section-title { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .section-title h2 { margin: 0; font-size: 16px; letter-spacing: -.025em; }
+    .link-button { border: 0; padding: 4px; background: none; color: var(--green); font-weight: 700; font-size: 12px; cursor: pointer; }
+    .mode-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin: 15px 0 17px; }
+    .mode { min-height: 40px; border: 1px solid var(--line); background: white; color: var(--muted); border-radius: 9px; font-size: 11px; font-weight: 700; cursor: pointer; }
+    .mode[aria-pressed="true"] { border-color: var(--forest); background: #eef5eb; color: var(--forest); }
+    .mode span { margin-right: 5px; }
+    .mode[aria-pressed="true"] span { display: inline-block; animation: transport-bob 1.1s ease-in-out infinite; }
+    @keyframes transport-bob { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-3px) rotate(-4deg); } }
+    .route-summary { display: flex; align-items: baseline; gap: 8px; padding: 12px 0 14px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .route-summary strong { font-size: 23px; letter-spacing: -.045em; }
+    .route-summary span { color: var(--muted); font-size: 12px; }
+    .route-summary .green-label { margin-left: auto; color: var(--green); font-weight: 700; }
+    .route-status { margin: 10px 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+    .route-status:empty { display: none; }
+    .route-status.is-error { color: #9e3b2c; }
+    .external-route { display: none; margin: 0 0 12px; border: 1px solid #dfe9d7; border-radius: 9px; padding: 10px; background: #f3f7ef; font-size: 11px; line-height: 1.5; }
+    .external-route.is-visible { display: block; }
+    .external-route a { display: inline-block; margin-top: 6px; color: var(--green); font-weight: 750; }
+    .step-list { list-style: none; padding: 0; margin: 17px 0 13px; }
+    .step { display: grid; grid-template-columns: 28px 1fr; gap: 11px; position: relative; padding-bottom: 17px; }
+    .step:not(:last-child)::after { content: ""; position: absolute; top: 27px; bottom: 1px; left: 13px; border-left: 1px dashed #cbd8cc; }
+    .step-icon { width: 27px; height: 27px; display: grid; place-items: center; background: #edf4e9; border-radius: 50%; color: var(--green); }
+    .step-icon svg { width: 14px; height: 14px; }
+    .step strong { display: block; font-size: 13px; line-height: 1.35; }
+    .step small { display: block; color: var(--muted); font-size: 11px; margin-top: 3px; line-height: 1.4; }
+    .step.is-current .step-icon { color: white; background: var(--forest); }
+    .step.is-current strong { color: var(--forest); }
+    .route-actions { display: grid; grid-template-columns: 1fr auto; gap: 9px; }
+    .start-button { min-height: 44px; }
+    .voice-button { min-width: 46px; border: 1px solid var(--line); border-radius: 10px; background: white; color: var(--forest); cursor: pointer; display: grid; place-items: center; }
+    .voice-button svg { width: 20px; height: 20px; }
+
+    .preferences { padding: 16px 18px; }
+    .preference-line { display: flex; justify-content: space-between; align-items: center; gap: 14px; }
+    .preference-copy strong { font-size: 13px; display: block; }
+    .preference-copy span { color: var(--muted); font-size: 11px; display: block; margin-top: 4px; }
+    .toggle { border: 0; width: 42px; height: 24px; padding: 3px; border-radius: 20px; background: #cbd4ce; cursor: pointer; flex: 0 0 auto; transition: background .2s; }
+    .toggle::before { content: ""; display: block; height: 18px; width: 18px; border-radius: 50%; background: white; transition: transform .2s; }
+    .toggle[aria-checked="true"] { background: var(--green); }
+    .toggle[aria-checked="true"]::before { transform: translateX(18px); }
+    .preference-detail { display: none; border-top: 1px solid var(--line); margin-top: 13px; padding-top: 12px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .preferences.expanded .preference-detail { display: block; }
+    .prefs-foot { border-top: 1px solid var(--line); margin-top: 13px; padding-top: 11px; display: flex; justify-content: space-between; align-items: center; }
+    .prefs-foot span { color: var(--muted); font-size: 11px; }
+    .prefs-foot button { border: 0; background: none; padding: 3px; color: var(--green); font-size: 11px; font-weight: 750; cursor: pointer; }
+    .settings-dialog { width: min(520px, calc(100vw - 28px)); max-height: min(85vh, 720px); padding: 0; border: 1px solid var(--line); border-radius: 18px; color: var(--ink); background: var(--paper); box-shadow: 0 24px 80px rgba(10,32,24,.25); }
+    .settings-dialog::backdrop { background: rgba(15,35,28,.48); backdrop-filter: blur(2px); }
+    .settings-content { padding: 22px; }
+    .settings-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 18px; }
+    .settings-heading h2 { margin: 0; font-size: 20px; }
+    .settings-heading p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
+    .settings-close { width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 50%; background: white; cursor: pointer; }
+    .setting-row { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 13px 0; border-top: 1px solid var(--line); }
+    .setting-row label, .setting-row strong { display: block; font-size: 13px; font-weight: 700; }
+    .setting-row small { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.45; }
+    .setting-row input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--forest); flex: 0 0 auto; }
+    .setting-row select { max-width: 150px; min-height: 38px; border: 1px solid var(--line); border-radius: 8px; padding: 0 8px; background: white; }
+    .setting-row input[type="range"] { width: 125px; accent-color: var(--forest); }
+    .settings-footnote { margin: 12px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .settings-save { width: 100%; margin-top: 18px; }
+
+    .right-column { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+    .map-card { overflow: hidden; position: relative; min-height: 405px; flex: 1; background: #eef1e8; }
+    .map-top { position: absolute; z-index: 2; top: 15px; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; }
+    .map-context { background: rgba(255,255,255,.94); border: 1px solid rgba(220,228,217,.9); box-shadow: 0 5px 16px rgba(31,53,43,.08); border-radius: 10px; padding: 10px 12px; }
+    .map-context strong { display: block; font-size: 12px; }
+    .map-context span { display: block; color: var(--muted); font-size: 10px; margin-top: 3px; }
+    .map-context b { color: var(--green); }
+    .map-tools { display: grid; gap: 7px; pointer-events: auto; }
+    .map-tool { height: 38px; width: 38px; display: grid; place-items: center; border: 1px solid #e4e9e2; border-radius: 10px; background: white; color: var(--forest); cursor: pointer; box-shadow: 0 4px 12px rgba(31,53,43,.08); }
+    .map-tool svg { width: 17px; height: 17px; }
+    .view-switcher { position: absolute; z-index: 3; top: 77px; left: 16px; display: flex; gap: 4px; padding: 4px; border: 1px solid rgba(220,228,217,.9); border-radius: 11px; background: rgba(255,255,255,.95); box-shadow: 0 5px 16px rgba(31,53,43,.08); }
+    .view-button { border: 0; border-radius: 7px; background: transparent; padding: 7px 10px; color: var(--muted); font-size: 11px; font-weight: 700; cursor: pointer; }
+    .view-button[aria-pressed="true"] { background: var(--forest); color: white; }
+    .map-art { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 405px; display: none; }
+    .map-art.is-active { display: block; }
+    #leafletMap { display: none; position: absolute; z-index: 1; inset: 0; width: 100%; height: 100%; min-height: 405px; background: #eef1e8; }
+    .map-card.map-loaded #leafletMap.is-active { display: block; }
+    .map-card.map-loaded .map-art.classic { display: none; }
+    .map-card[data-view="3d"] .map-art.view-3d { display: none; }
+    #leafletMap.is-3d { transform: perspective(1100px) rotateX(38deg) scale(1.2); transform-origin: center 70%; }
+    .street-view-frame { display: none; position: absolute; z-index: 1; inset: 0; width: 100%; height: 100%; min-height: 405px; border: 0; background: #e7ece8; }
+    .map-card[data-view="street"].has-coordinates .street-view-frame.is-active { display: block; }
+    .map-card[data-view="street"].has-coordinates .street-scene { display: none !important; }
+    .leaflet-control-attribution { font-size: 9px !important; }
+    .location-dot { width: 18px; height: 18px; border-radius: 50%; border: 3px solid white; background: #164f44; box-shadow: 0 1px 5px #34463b; }
+    .destination-dot { width: 22px; height: 22px; display: grid; place-items: center; border: 3px solid white; border-radius: 50% 50% 50% 0; background: #397755; color: white; font-size: 11px; font-weight: 800; transform: rotate(-45deg); box-shadow: 0 1px 5px #34463b; }
+    .destination-dot span { transform: rotate(45deg); }
+    .street-scene { position: absolute; inset: 0; display: none; overflow: hidden; background: #dce8e7; }
+    .street-scene.is-active { display: block; }
+    .street-scene svg { width: 100%; height: 100%; min-height: 405px; display: block; }
+    .view-disclaimer { display: none; position: absolute; z-index: 2; left: 50%; top: 77px; transform: translateX(-50%); max-width: calc(100% - 190px); border-radius: 8px; padding: 8px 11px; color: #5b5140; background: rgba(255,255,255,.94); font-size: 10px; text-align: center; pointer-events: none; }
+    .map-card[data-view="street"] .view-disclaimer { display: block; }
+    .map-card[data-view="street"] .map-caption em { color: #9c6d22; }
+    .traveler-marker { display: none; }
+    .map-card[data-view="classic"].is-guiding .traveler-marker { display: block; }
+    .map-card.is-guiding .traveler-halo { animation: marker-pulse 1.8s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+    @keyframes marker-pulse { 0% { opacity: .8; transform: scale(.7); } 100% { opacity: 0; transform: scale(1.7); } }
+    .map-caption { position: absolute; left: 16px; bottom: 15px; z-index: 2; display: flex; align-items: center; gap: 7px; border-radius: 9px; padding: 8px 11px; color: #526357; background: rgba(255,255,255,.92); font-size: 10px; }
+    .map-caption span { width: 8px; height: 8px; background: #73ad58; border-radius: 50%; }
+    .map-caption em { font-style: normal; color: #9c6d22; margin-left: 7px; }
+    .map-watermark { position: absolute; right: 13px; bottom: 12px; color: #748376; font-size: 9px; }
+    .map-card.is-guiding .map-watermark { color: var(--green); font-weight: 700; }
+
+    .discover-card { display: grid; grid-template-columns: minmax(145px, .8fr) 1fr; gap: 12px; align-items: center; padding: 14px 16px; }
+    .discover-heading { display: flex; align-items: center; gap: 9px; }
+    .discover-icon { width: 36px; height: 36px; background: var(--amber); color: #a56d13; display: grid; place-items: center; border-radius: 10px; }
+    .discover-icon svg { width: 18px; height: 18px; }
+    .discover-heading h2 { margin: 0; font-size: 13px; }
+    .discover-heading p { color: var(--muted); margin: 3px 0 0; font-size: 10px; }
+    .discover-items { display: flex; gap: 8px; overflow: auto; }
+    .discover-filters { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
+    .discover-filter { border: 1px solid var(--line); border-radius: 99px; padding: 5px 8px; background: white; color: var(--muted); font-size: 10px; cursor: pointer; }
+    .discover-filter[aria-pressed="true"] { border-color: var(--forest); background: #eef5eb; color: var(--forest); font-weight: 700; }
+    .place { min-width: 118px; border: 1px solid var(--line); background: white; border-radius: 10px; padding: 9px 10px; }
+    .place strong { display: block; font-size: 11px; }
+    .place span { display: block; font-size: 10px; color: var(--muted); margin-top: 3px; }
+    .place .distance { color: var(--green); font-weight: 700; }
+    .place[hidden] { display: none; }
+    .place button { display: block; margin-top: 7px; padding: 0; border: 0; background: none; color: var(--green); font-size: 10px; font-weight: 750; cursor: pointer; }
+    .booking-note { display: none; margin-top: 12px; border-top: 1px solid var(--line); padding-top: 11px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .booking-note.is-visible { display: block; }
+
+    .toast { position: fixed; z-index: 8; left: 50%; bottom: 24px; transform: translate(-50%, 20px); opacity: 0; pointer-events: none; padding: 12px 17px; border-radius: 11px; color: white; background: var(--forest-dark); box-shadow: var(--shadow); font-size: 13px; transition: opacity .2s, transform .2s; max-width: calc(100vw - 32px); text-align: center; }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+    @media (max-width: 850px) {
+      .shell { padding: 0 4%; }
+      .workspace { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 14px; }
+      .form-grid { grid-template-columns: minmax(0, 1fr) 38px minmax(0, 1fr); }
+      .form-grid .primary { grid-column: 1 / -1; }
+      .map-card, .map-art, #leafletMap, .street-view-frame { min-height: 385px; }
+      .view-button { padding: 7px 8px; }
+    }
+    @media (max-width: 640px) {
+      header { height: 68px; }
+      .brand img { width: 143px; }
+      .header-note { display: none; }
+      main { padding-top: 17px; }
+      .intro { align-items: flex-start; flex-direction: column; gap: 12px; margin-bottom: 19px; }
+      .intro p { font-size: 13px; }
+      .safe-pill { font-size: 11px; padding: 8px 11px; }
+      .journey-form { padding: 16px 14px; margin-bottom: 15px; }
+      .simple-label { display: none; }
+      .form-grid { grid-template-columns: 1fr 36px 1fr; gap: 6px; }
+      .input-wrap { min-height: 45px; padding: 0 9px; gap: 7px; }
+      .input-wrap input { font-size: 12px; }
+      .field label { font-size: 10px; }
+      .swap { width: 34px; }
+      .form-grid .primary { min-height: 46px; grid-column: 1 / -1; margin-top: 4px; }
+      .assistant-card { align-items: flex-start; flex-direction: column; gap: 11px; margin: -3px 0 15px; padding: 13px; }
+      .assistant-actions { width: 100%; }
+      .assistant-actions .primary { flex: 1; }
+      .workspace { display: flex; flex-direction: column-reverse; gap: 14px; }
+      .map-card, .map-art, #leafletMap, .street-view-frame { min-height: 335px; }
+      .street-scene svg { min-height: 335px; }
+      .view-switcher { left: 10px; top: 66px; }
+      .view-button { padding: 7px 7px; font-size: 10px; }
+      .view-disclaimer { top: 112px; max-width: calc(100% - 28px); left: 14px; right: 14px; transform: none; }
+      .left-column { gap: 12px; }
+      .route-card { padding: 16px 15px 14px; }
+      .discover-card { grid-template-columns: 1fr; gap: 11px; }
+      .discover-items { padding-bottom: 2px; }
+      .place { min-width: 135px; }
+      .settings-content { padding: 17px; }
+      .header-right { gap: 6px; }
+      .header-action { min-height: 38px; padding: 0 9px; font-size: 11px; }
+      .header-note { display: none; }
+      .brand img { width: 118px; }
+      #languageButton, .profile { display: none; }
+    }
+    @media (max-width: 380px) {
+      .brand img { width: 88px; }
+      .header-action { gap: 4px; padding: 0 6px; font-size: 10px; }
+      #kidsToggle, #accountButton, #installButton { width: 38px; min-width: 38px; padding: 0; font-size: 0; }
+      #kidsToggle::after { content: "Enf."; font-size: 9px; }
+      #accountButton::after { content: "Compte"; font-size: 9px; }
+      #installButton svg { width: 17px; height: 17px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+      .mode[aria-pressed="true"] span, .map-card.is-guiding .traveler-halo,
+      .journey-animation *, .family-safety-note, .family-place-icon, .kids-mode .primary { animation: none !important; }
+      .family-place { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <a class="brand" href="#" aria-label="NaVigue, accueil">
+        <img src="wordmark-navigue.svg" alt="NaVigue — Tous les chemins, à votre rythme.">
+      </a>
+      <div class="header-right">
+        <span class="header-note">La navigation, simplement.</span>
+        <button class="header-action" id="kidsToggle" type="button" aria-pressed="false" aria-controls="familySafetyNote">Mode enfant</button>
+        <button class="header-action" id="installButton" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 17v3h16v-3"/></svg>
+          Installer
+        </button>
+        <button class="round-button" id="languageButton" aria-label="Choisir la langue" title="Langue : français">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>
+        </button>
+        <button class="header-action" id="accountButton" type="button" aria-label="Connexion ou compte adulte">Compte adulte</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="intro" aria-labelledby="pageTitle">
+        <div>
+          <p class="eyebrow">Votre compagnon de route</p>
+          <h1 id="pageTitle">On y va ensemble&nbsp;?</h1>
+          <p>Une destination, des explications claires. NaVigue s’occupe du chemin.</p>
+        </div>
+        <div class="safe-pill">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z"/><path d="m9 12 2 2 4-4"/></svg>
+          Des consignes à votre rythme
+        </div>
+      </section>
+      <aside class="family-safety-note" id="familySafetyNote" role="note" aria-live="polite">
+        <span aria-hidden="true">🧑‍🧑‍🧒</span>
+        <p><strong>Un adulte doit t’accompagner.</strong> Demande-lui de choisir une adresse favorite et de vérifier le trajet avec toi. Ta position est utilisée pour calculer l’itinéraire et partagée avec les services cartographiques utilisés par NaVigue.</p>
+      </aside>
+      <section class="family-destinations" id="childDestinations" aria-labelledby="childDestinationsTitle">
+        <h2 id="childDestinationsTitle">Qui t’accompagne ou qui vas-tu rejoindre ?</h2>
+        <p>Choisis une adresse que ton parent a préparée avec toi.</p>
+        <div class="family-place-grid" id="childFavoriteList" aria-live="polite"></div>
+      </section>
+
+      <form class="journey-form" id="journeyForm">
+        <div class="form-head">
+          <h2>Où souhaitez-vous aller&nbsp;?</h2>
+          <span class="simple-label">Vous pourrez changer d’avis en chemin.</span>
+        </div>
+        <div class="form-grid">
+          <div class="field">
+            <label for="origin">JE PARS DE</label>
+            <div class="input-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9"/></svg>
+              <input id="origin" value="Ma position" aria-label="Point de départ">
+            </div>
+          </div>
+          <button type="button" class="swap" id="swapButton" aria-label="Inverser départ et destination">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h13l-3-3M17 17H4l3 3"/></svg>
+          </button>
+          <div class="field">
+            <label for="destination">JE VAIS À</label>
+            <div class="input-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+              <input id="destination" placeholder="Une adresse ou un lieu" required>
+            </div>
+          </div>
+          <button class="primary" type="submit">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 21 3l-8 18-2-8-8-2Z"/><path d="m11 13 5-5"/></svg>
+            Trouver mon chemin
+          </button>
+        </div>
+      </form>
+
+      <section class="card assistant-card" aria-label="Assistance vocale">
+        <div class="assistant-intro">
+          <span class="assistant-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4M8 22h8"/></svg></span>
+          <div class="assistant-copy">
+            <strong id="assistantTitle">Bonjour, je suis NaVigue.</strong>
+            <p id="assistantMessage">Touchez « Activer la voix » pour entendre mon accueil. Micro et position ne sont demandés que lorsque vous les utilisez.</p>
+          </div>
+        </div>
+        <div class="assistant-actions">
+          <button class="primary" id="assistantButton" type="button">Activer la voix</button>
+          <button class="voice-button" id="dictationButton" type="button" aria-label="Dicter une destination" title="Dicter une destination">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1M12 18v4M8 22h8"/></svg>
+          </button>
+        </div>
+      </section>
+
+      <div class="workspace">
+        <div class="left-column">
+          <section class="card route-card" aria-labelledby="routeTitle">
+            <div class="section-title">
+              <h2 id="routeTitle">Votre chemin, pas à pas</h2>
+              <button class="link-button" id="alternativeButton" type="button" disabled>Autre option</button>
+            </div>
+            <div class="mode-list" role="group" aria-label="Mode de déplacement">
+              <button class="mode" data-mode="walk" aria-pressed="true"><span>🚶</span>À pied</button>
+              <button class="mode" data-mode="bike" aria-pressed="false"><span>🚲</span>Vélo</button>
+              <button class="mode" data-mode="transit" aria-pressed="false"><span>🚇</span>Bus, métro &amp; train</button>
+              <button class="mode" data-mode="car" aria-pressed="false"><span>🚗</span>Voiture</button>
+              <button class="mode" data-mode="taxi" aria-pressed="false"><span>🚕</span>VTC / taxi</button>
+            </div>
+            <div class="booking-note" id="bookingNote" aria-live="polite">
+              <strong>VTC et taxis : aperçu</strong>
+              <div>Choisissez un service pour voir comment il s’intègre au parcours. Aucune course ne sera commandée.</div>
+              <div class="discover-filters" role="group" aria-label="Services de transport à comparer">
+                <button class="discover-filter provider-button" data-provider="Uber" aria-pressed="false">Uber</button>
+                <button class="discover-filter provider-button" data-provider="Bolt" aria-pressed="false">Bolt</button>
+                <button class="discover-filter provider-button" data-provider="Taxi local" aria-pressed="false">Taxi local</button>
+              </div>
+            </div>
+            <p class="route-status" id="routeStatus" role="status" aria-live="polite"></p>
+            <div class="external-route" id="transitNote">
+              <strong>Transports en commun dans NaVigue</strong>
+              <div>Trajets et horaires calculés ici par NaVigue avec les données de Transitous. Service communautaire, non commercial et à disponibilité variable.</div>
+              <a href="https://transitous.org/sources/" target="_blank" rel="noopener noreferrer">Sources et attribution ↗</a>
+              <a href="https://transitous.org/api/" target="_blank" rel="noopener noreferrer">Conditions d’utilisation du service ↗</a>
+            </div>
+            <div class="external-route" id="accessibilityNote">
+              <strong>À vérifier pour votre sécurité</strong>
+              <div>Le calculateur public ne garantit pas les trottoirs, ascenseurs ni l’accessibilité des passages. Vérifiez le parcours avant de partir.</div>
+            </div>
+            <div class="route-summary">
+              <strong id="routeDuration">—</strong>
+              <span id="routeDistance">Calculez un itinéraire</span>
+              <span class="green-label" id="routeArrival">En attente</span>
+            </div>
+            <div class="journey-animation" id="journeyAnimation" aria-hidden="true">
+              <svg viewBox="0 0 116 28">
+                <path class="trail" d="M3 19C21 19 18 7 39 7s18 13 37 13 21-12 37-12"/>
+                <g class="traveller" id="animationTraveller"><use href="#transport-walk" x="48" y="0" width="24" height="24"/></g>
+              </svg>
+              <span id="animationCaption">Ton trajet prend forme !</span>
+            </div>
+            <ol class="step-list" id="stepList" aria-label="Étapes de l’itinéraire">
+              <li class="step is-current">
+                <span class="step-icon">1</span>
+                <div><strong>Indiquez votre départ et votre destination</strong><small>NaVigue calculera les consignes à suivre.</small></div>
+              </li>
+            </ol>
+            <div class="route-actions">
+              <button class="primary start-button" id="startButton" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 3 14 9-14 9V3Z"/></svg>
+                Démarrer le guidage
+              </button>
+              <button class="voice-button" id="voiceButton" type="button" aria-label="Lire la prochaine consigne à voix haute" title="Lire la consigne à voix haute">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5ZM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>
+              </button>
+            </div>
+          </section>
+
+          <section class="card preferences" id="preferences" aria-label="Préférences d’accessibilité">
+            <div class="preference-line">
+              <div class="preference-copy">
+                <strong>Itinéraire accessible</strong>
+                <span>Éviter escaliers et obstacles</span>
+              </div>
+              <button class="toggle" id="accessibilityToggle" role="switch" aria-checked="false" aria-label="Activer l’itinéraire accessible"></button>
+            </div>
+            <div class="preference-detail">Nous privilégierons les ascenseurs et les passages sans marche. La disponibilité réelle des équipements reste à confirmer localement.</div>
+            <div class="prefs-foot">
+              <span>Voix, affichage, langue</span>
+              <button id="preferencesButton" type="button">Personnaliser</button>
+            </div>
+          </section>
+        </div>
+
+        <div class="right-column">
+          <section class="card map-card" id="mapCard" data-view="classic" aria-label="Carte interactive OpenStreetMap">
+            <div class="map-top">
+              <div class="map-context"><strong id="mapDestination">Votre trajet apparaîtra ici</strong><span id="mapViewDescription">Carte réelle OpenStreetMap</span></div>
+              <div class="map-tools">
+                <button class="map-tool" id="recenterButton" aria-label="Me localiser" title="Me localiser"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="7"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="2"/></svg></button>
+                <button class="map-tool" id="orientationButton" aria-label="Réinitialiser l’orientation" title="Nord en haut"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 4 11-4-2-4 2 4-11Z"/><path d="M12 14v7"/></svg></button>
+              </div>
+            </div>
+            <div class="view-switcher" role="group" aria-label="Choisir la vue de navigation">
+              <button class="view-button" data-view="classic" aria-pressed="true">Plan</button>
+              <button class="view-button" data-view="3d" aria-pressed="false">Vue 3D</button>
+              <button class="view-button" data-view="street" aria-pressed="false">Vue rue</button>
+            </div>
+            <div class="view-disclaimer" id="viewDisclaimer" role="note">Sélectionnez un trajet pour charger la vue de rue à votre destination.</div>
+            <iframe class="street-view-frame" id="streetViewFrame" title="Vue panoramique réelle de la rue" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+            <div id="leafletMap" aria-label="Carte interactive OpenStreetMap"></div>
+            <svg class="map-art classic is-active" viewBox="0 0 800 520" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Plan schématique de Paris avec le tracé de l’itinéraire">
+              <rect width="800" height="520" fill="#eef1e8"/>
+              <path d="M0 68 800 22M0 201 800 157M0 363 800 316M0 492 800 444" stroke="#fff" stroke-width="19"/>
+              <path d="M118 0 147 520M330 0 355 520M579 0 602 520M737 0 750 520" stroke="#fff" stroke-width="17"/>
+              <path d="m0 117 800-42M0 270l800-45M0 429l800-42" stroke="#dce8d8" stroke-width="2" stroke-dasharray="4 7"/>
+              <path d="M228 0 253 520M474 0 499 520M678 0 700 520" stroke="#dce8d8" stroke-width="2" stroke-dasharray="4 7"/>
+              <path d="M0 322c106-18 133-103 251-90 110 12 147 89 278 75s162-78 271-74" fill="none" stroke="#d8e9ed" stroke-width="26"/>
+              <path d="M0 322c106-18 133-103 251-90 110 12 147 89 278 75s162-78 271-74" fill="none" stroke="#fff" stroke-width="3"/>
+              <path d="M174 421c53-55 70-104 134-113s77 17 130-29 86-84 128-112" fill="none" stroke="#78b56a" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M174 421c53-55 70-104 134-113s77 17 130-29 86-84 128-112" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="3 11" stroke-linecap="round"/>
+              <defs>
+                <symbol id="transport-walk" viewBox="0 0 24 24"><circle cx="14" cy="4" r="2" fill="none" stroke="#164f44" stroke-width="2"/><path d="m12 8-3 4 4 2 2 6m-6-8-4 5m7-5 4-2m-5 4-3 7" fill="none" stroke="#164f44" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+                <symbol id="transport-bike" viewBox="0 0 24 24"><circle cx="6" cy="17" r="4" fill="none" stroke="#164f44" stroke-width="1.7"/><circle cx="18" cy="17" r="4" fill="none" stroke="#164f44" stroke-width="1.7"/><path d="m6 17 4-7 4 7H6l3-5h6m-3-2h3m-2-2h2" fill="none" stroke="#164f44" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+                <symbol id="transport-transit" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="16" rx="3" fill="none" stroke="#164f44" stroke-width="1.8"/><path d="M8 7h8v5H8zM8 22l2-3m6 3-2-3m-5-4h.01M15 15h.01" fill="none" stroke="#164f44" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+                <symbol id="transport-car" viewBox="0 0 24 24"><path d="m5 11 2-5h10l2 5 2 2v5h-2v2h-3v-2H8v2H5v-2H3v-5l2-2Z" fill="none" stroke="#164f44" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 11h10M6 15h.01M18 15h.01" fill="none" stroke="#164f44" stroke-width="1.8" stroke-linecap="round"/></symbol>
+                <symbol id="transport-taxi" viewBox="0 0 24 24"><path d="m5 11 2-5h10l2 5 2 2v5h-2v2h-3v-2H8v2H5v-2H3v-5l2-2Z" fill="none" stroke="#164f44" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 11h10M10 4V2h4v2M6 15h.01M18 15h.01" fill="none" stroke="#164f44" stroke-width="1.8" stroke-linecap="round"/></symbol>
+              </defs>
+              <g id="travelerMarker" class="traveler-marker">
+                <animateMotion id="vehicleMotion" dur="9s" repeatCount="indefinite" begin="indefinite" rotate="auto" path="M174 421 C227 366 244 317 308 308 S385 325 438 279 S524 195 566 167"/>
+                <circle class="traveler-halo" r="22" fill="#bfe294" opacity=".55"/>
+                <circle r="16" fill="#fff" stroke="#164f44" stroke-width="2"/>
+                <use id="travelerIcon" href="#transport-walk" x="-11" y="-11" width="22" height="22"/>
+              </g>
+              <circle cx="174" cy="421" r="20" fill="#164f44" opacity=".14"/><circle cx="174" cy="421" r="9" fill="#164f44" stroke="#fff" stroke-width="4"/>
+              <path d="M566 148c0 20-30 52-30 52s-30-32-30-52a30 30 0 1 1 60 0Z" fill="#164f44"/><circle cx="536" cy="147" r="9" fill="#bfe294"/>
+              <g transform="translate(270 172)"><rect width="112" height="31" rx="8" fill="#fff"/><text x="56" y="20" text-anchor="middle" fill="#56695e" font-size="12" font-family="system-ui">Jardin des Tuileries</text></g>
+              <g transform="translate(387 341)"><rect width="74" height="28" rx="7" fill="#fff"/><text x="37" y="18" text-anchor="middle" fill="#56695e" font-size="11" font-family="system-ui">La Seine</text></g>
+              <g transform="translate(568 220)"><rect width="98" height="28" rx="7" fill="#fff"/><text x="49" y="18" text-anchor="middle" fill="#56695e" font-size="11" font-family="system-ui">Pont de l’Alma</text></g>
+              <text x="54" y="160" fill="#93a095" font-size="11" font-family="system-ui">PLACE VENDÔME</text>
+              <text x="635" y="393" fill="#93a095" font-size="11" font-family="system-ui">INVALIDES</text>
+              <text x="228" y="485" fill="#93a095" font-size="11" font-family="system-ui">QUARTIER SAINT-GERMAIN</text>
+              <g transform="translate(688 78)"><circle r="20" fill="#fff"/><path d="m0-11 5 14-5-3-5 3 5-14Z" fill="#397755"/><text x="0" y="34" text-anchor="middle" fill="#748376" font-size="9" font-family="system-ui">N</text></g>
+            </svg>
+            <svg class="map-art view-3d" viewBox="0 0 800 520" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Ancienne illustration statique de la perspective cartographique">
+              <defs>
+                <linearGradient id="sky3d" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#d7e9ed"/><stop offset="1" stop-color="#f0f3e8"/></linearGradient>
+                <linearGradient id="road3d" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#aeb6ad"/><stop offset="1" stop-color="#747e78"/></linearGradient>
+              </defs>
+              <rect width="800" height="520" fill="url(#sky3d)"/>
+              <circle cx="653" cy="83" r="34" fill="#fff5ce" opacity=".8"/>
+              <path d="M0 204 800 179V520H0Z" fill="#d8e3d3"/>
+              <path d="m264 211 272-9 265 318H0Z" fill="url(#road3d)"/>
+              <path d="m264 211 272-9 265 318H0Z" fill="none" stroke="#f8f6e8" stroke-width="7"/>
+              <path d="m398 207 10-1 35 314H356Z" fill="#f3e6af" opacity=".88"/>
+              <path d="m0 282 264-71 46 3L0 342Zm800-76-264-4-41 4 305 114Z" fill="#f7f3e7"/>
+              <g fill="#c99573" stroke="#9e735b" stroke-width="2">
+                <path d="M0 87 129 62 206 78 205 278 0 337Z"/><path d="M595 70 712 89 800 111 800 338 602 279Z"/>
+                <path d="M145 120 227 113 261 126 260 219 153 240Z"/><path d="M542 119 604 124 636 136 636 218 541 204Z"/>
+              </g>
+              <g fill="#f2d4ad">
+                <path d="m0 87 129-25v22L0 112Zm595-17 117 19v20L595 91Zm-450 50 82-7v18l-82 10Zm397-1 62 5v18l-62-5Z"/>
+              </g>
+              <g fill="#d8eaf0" stroke="#f6e6c8" stroke-width="4">
+                <path d="m21 135 26-6v34l-26 7Zm49-11 26-6v34l-26 7Zm50-11 26-6v34l-26 7Zm-99 73 26-7v35l-26 7Zm49-13 26-7v35l-26 7Zm50-13 26-7v35l-26 7Zm520-48 24 5v34l-24-5Zm49 10 24 5v34l-24-5Zm48 11 24 5v34l-24-5Zm-95 34 24 6v35l-24-6Zm48 11 24 6v35l-24-6Zm48 12 24 6v35l-24-6Z"/>
+              </g>
+              <g fill="#9dbd8a">
+                <path d="M218 178v-29h8v29h10v7h-29v-7Zm356 0v-29h8v29h10v7h-29v-7Z"/>
+                <circle cx="222" cy="143" r="16"/><circle cx="578" cy="143" r="16"/>
+                <circle cx="253" cy="200" r="25"/><circle cx="547" cy="198" r="25"/>
+              </g>
+              <path d="m177 489 30-7 11 38-41 0Zm411-1 39 8-7 24h-43Z" fill="#bfe294"/>
+              <path d="m390 257 18-2 5 46-25 2Zm-15 119 30-2 7 63-41 2Z" fill="#fff" opacity=".72"/>
+              <path d="m404 205-32 58m32-58 38 59" fill="none" stroke="#8e755f" stroke-width="2"/>
+              <g transform="translate(350 135)" fill="#8b755e"><path d="m50 0-4 65h8l-4-65Zm-17 65h34l-5 7H38Zm-8 9h50l-5 7H30Zm-8 9h66l-5 7H22Zm-9 9h84l-5 7H13Zm-8 9h100l-5 7H5Z"/></g>
+              <path d="M178 425c51-39 99-81 167-83s83 20 123-22 75-83 111-100" fill="none" stroke="#bfe294" stroke-width="8" stroke-linecap="round" stroke-dasharray="2 12"/>
+              <g transform="translate(265 305)"><rect width="142" height="30" rx="8" fill="#fff"/><text x="71" y="19" text-anchor="middle" fill="#164f44" font-size="11" font-family="system-ui">Suivez la rue tout droit</text></g>
+              <text x="400" y="503" text-anchor="middle" fill="#fff" font-size="10" font-family="system-ui" opacity=".9">VUE 3D ILLUSTRÉE</text>
+            </svg>
+            <div class="street-scene" role="img" aria-label="Illustration immersive d’une rue parisienne en direction de la Tour Eiffel">
+              <svg viewBox="0 0 800 520" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                <defs>
+                  <linearGradient id="streetSky" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#bcd8e4"/><stop offset=".68" stop-color="#f5e6ca"/><stop offset="1" stop-color="#e4d8c3"/></linearGradient>
+                  <linearGradient id="streetRoad" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#858b87"/><stop offset="1" stop-color="#555e59"/></linearGradient>
+                  <linearGradient id="buildingShade" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#ead3b3"/><stop offset="1" stop-color="#cba783"/></linearGradient>
+                </defs>
+                <rect width="800" height="520" fill="url(#streetSky)"/>
+                <circle cx="659" cy="94" r="39" fill="#fff0c8" opacity=".8"/>
+                <path d="m332 226 68-12 68 12v80H332Z" fill="#7e8d83"/>
+                <path d="M0 112 186 91l106 49v205L0 444Z" fill="url(#buildingShade)"/>
+                <path d="M0 112 186 91v35L0 165Z" fill="#b78866"/>
+                <path d="m186 91 106 49v25l-106-39Z" fill="#b58a68"/>
+                <path d="M800 103 626 89l-111 53v203l285 99Z" fill="#d9b795"/>
+                <path d="M800 103 626 89v35l174 15Z" fill="#a87e61"/>
+                <path d="m626 89-111 53v25l111-43Z" fill="#b28b6c"/>
+                <path d="m0 439 292-94 108-48 108 48 292 94v81H0Z" fill="#d2c5ad"/>
+                <path d="m0 441 292-96 108-48 108 48 292 96v79H0Z" fill="url(#streetRoad)"/>
+                <path d="m0 438 292-95 108-46 108 46 292 95" fill="none" stroke="#eee5d3" stroke-width="8"/>
+                <path d="m369 518 23-126 8-76h9l8 76 23 126" fill="#eee7d8" opacity=".9"/>
+                <path d="m78 427 17-5 11 38-23 7Zm68-22 16-6 10 35-23 8Zm566 22-17-5-11 38 23 7Zm-68-22-16-6-10 35 23 8Z" fill="#f9f4e9"/>
+                <g fill="#e9d8bd" stroke="#ac8969" stroke-width="3">
+                  <path d="m28 165 49-7v60l-49 10Zm86-12 49-7v61l-49 7Zm-86 94 49-9v63l-49 13Zm86-20 49-8v63l-49 10Zm-86 113 49-14v73l-49 17Zm86-32 49-12v72l-49 14Z"/>
+                  <path d="m637 151 43 7v61l-43-7Zm78 11 43 8v62l-43-8Zm-78 74 43 9v64l-43-9Zm78 18 43 10v63l-43-10Zm-78 91 43 13v73l-43-13Zm78 23 43 14v73l-43-14Z"/>
+                </g>
+                <g fill="#587164">
+                  <path d="M86 147v-27h9v27h12v8H74v-8Zm648-2v-27h9v27h12v8h-33v-8Z"/>
+                  <circle cx="90" cy="116" r="19"/><circle cx="652" cy="116" r="19"/>
+                  <circle cx="220" cy="281" r="31"/><circle cx="582" cy="278" r="32"/>
+                  <circle cx="200" cy="318" r="20"/><circle cx="604" cy="317" r="21"/>
+                </g>
+                <g fill="#6a5142" font-family="system-ui" font-size="12" font-weight="700">
+                  <rect x="27" y="272" width="72" height="22" rx="3" fill="#f6ead6"/><text x="63" y="287" text-anchor="middle">RUE CLER</text>
+                  <rect x="700" y="282" width="71" height="22" rx="3" fill="#f6ead6"/><text x="735" y="297" text-anchor="middle">RUE CLER</text>
+                </g>
+                <g transform="translate(360 85)" fill="#6e6555">
+                  <path d="m40 0-4 120h8L40 0Zm-16 120h32l-5 8H29Zm-8 10h48l-5 8H21Zm-8 11h64l-5 8H13Zm-8 11h80l-5 8H5Zm-8 11h96l-5 8H-3Zm-8 11h112l-5 8H-11Z"/>
+                </g>
+                <path d="M399 245c0-22 3-37 5-52" stroke="#397755" stroke-width="3" stroke-dasharray="5 7"/>
+                <path d="m394 203 10-12 9 13" fill="none" stroke="#397755" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                <g transform="translate(340 356)"><rect width="120" height="31" rx="9" fill="#fff" opacity=".95"/><text x="60" y="20" text-anchor="middle" fill="#164f44" font-size="11" font-family="system-ui" font-weight="700">Continuez tout droit</text></g>
+                <path d="M0 0h800v14H0Z" fill="#164f44" opacity=".12"/>
+              </svg>
+            </div>
+            <div class="map-caption"><span></span><b id="mapCaptionTitle">Carte en attente</b><em id="mapCaptionNote">• saisissez un trajet</em></div>
+            <span class="map-watermark" id="mapWatermark">OpenStreetMap</span>
+          </section>
+
+          <section class="card discover-card" aria-labelledby="discoverTitle">
+            <div class="discover-heading">
+              <span class="discover-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 21h18L12 3Z"/><path d="M12 9v4M12 17h.01"/></svg></span>
+              <div>
+                <h2 id="discoverTitle">À découvrir en chemin</h2>
+                <p>Lieux proches de votre destination, depuis OpenStreetMap.</p>
+                <div class="discover-filters" role="group" aria-label="Filtrer les lieux">
+                  <button class="discover-filter" data-filter="all" aria-pressed="true">Tout</button>
+                  <button class="discover-filter" data-filter="park" aria-pressed="false">Parcs</button>
+                  <button class="discover-filter" data-filter="food" aria-pressed="false">Manger</button>
+                  <button class="discover-filter" data-filter="culture" aria-pressed="false">Culture</button>
+                </div>
+              </div>
+            </div>
+            <div class="discover-items" id="discoverItems">
+              <span>Calculez d’abord un trajet pour trouver des lieux à proximité.</span>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+  <dialog class="settings-dialog" id="settingsDialog" aria-labelledby="settingsTitle">
+    <form class="settings-content" method="dialog" id="settingsForm">
+      <div class="settings-heading">
+        <div><h2 id="settingsTitle">Mes préférences</h2><p>NaVigue s’adapte à votre façon de voyager.</p></div>
+        <button class="settings-close" value="cancel" aria-label="Fermer">×</button>
+      </div>
+      <div class="setting-row">
+        <div><label for="welcomeSetting">Accueil vocal</label><small>Lire un message de bienvenue au prochain démarrage. Le navigateur peut demander un premier appui pour autoriser le son.</small></div>
+        <input id="welcomeSetting" type="checkbox">
+      </div>
+      <div class="setting-row">
+        <div><label for="languageSetting">Langue de la voix</label><small>Choisit la langue des consignes vocales et de la dictée.</small></div>
+        <select id="languageSetting"><option value="fr-FR">Français</option><option value="en-US">English</option><option value="es-ES">Español</option></select>
+      </div>
+      <div class="setting-row">
+        <div><label for="speechRate">Vitesse de parole</label><small>Plus lent pour mieux suivre les consignes.</small></div>
+        <input id="speechRate" type="range" min="0.65" max="1.2" step="0.05" value="0.85">
+      </div>
+      <div class="setting-row">
+        <div><label for="largeTextSetting">Texte agrandi</label><small>Augmente la taille des consignes et des textes utiles.</small></div>
+        <input id="largeTextSetting" type="checkbox">
+      </div>
+      <div class="setting-row">
+        <div><label for="contrastSetting">Contraste renforcé</label><small>Renforce les contrastes pour faciliter la lecture.</small></div>
+        <input id="contrastSetting" type="checkbox">
+      </div>
+      <p class="settings-footnote">La langue choisie concerne la voix et la dictée, pas encore tous les textes de l’interface. Le micro et la localisation restent désactivés tant que vous ne lancez pas la dictée ou la demande de position.</p>
+      <button class="primary settings-save" value="save" id="saveSettings">Enregistrer mes préférences</button>
+    </form>
+  </dialog>
+  <dialog class="settings-dialog" id="installDialog" aria-labelledby="installTitle">
+    <div class="settings-content">
+      <div class="settings-heading">
+        <div><h2 id="installTitle">Installer NaVigue</h2><p>Ajoute l’application à l’écran d’accueil ou au bureau.</p></div>
+        <button class="settings-close" id="closeInstallDialog" type="button" aria-label="Fermer">×</button>
+      </div>
+      <p class="settings-footnote" id="installInstructions">L’installation est disponible lorsque le site est hébergé en HTTPS. Les cartes et les itinéraires ont besoin d’une connexion internet ; l’application hors ligne ne fournit pas de navigation.</p>
+      <button class="primary settings-save" id="confirmInstallButton" type="button" hidden>Installer l’application</button>
+    </div>
+  </dialog>
+  <dialog class="settings-dialog account-dialog" id="accountDialog" aria-labelledby="accountTitle">
+    <div class="account-content">
+      <div class="settings-heading">
+        <div><h2 id="accountTitle">Espace famille</h2><p>Le parent gère les profils enfant et prépare les adresses favorites.</p></div>
+        <button class="settings-close" id="closeAccountDialog" type="button" aria-label="Fermer">×</button>
+      </div>
+      <p class="account-note warning" id="accountSetupNotice">La connexion sécurisée n’est pas encore configurée. Le propriétaire du site doit créer un projet Supabase et renseigner son URL et sa clé publique dans <code>supabase-config.js</code>, puis activer Google, Microsoft et l’e-mail dans Supabase Auth.</p>
+      <section id="adultAuthPanel">
+        <label class="account-consent"><input id="adultConsent" type="checkbox"><span>Je suis un adulte parent/tuteur. Je crée et gère ici les profils des enfants que j’accompagne ; les enfants n’ont pas de compte de connexion propre.</span></label>
+        <div class="account-actions" role="group" aria-label="Se connecter avec un fournisseur">
+          <button type="button" data-oauth-provider="google">Continuer avec Google</button>
+          <button type="button" data-oauth-provider="azure">Continuer avec Microsoft</button>
+        </div>
+        <p class="account-note" id="providerStatus" role="status">Vérification de la disponibilité des connexions…</p>
+        <form id="adultEmailForm">
+          <label class="account-field" for="adultEmail">Adresse e-mail
+            <input id="adultEmail" type="email" autocomplete="email" required>
+          </label>
+          <label class="account-field" for="adultPassword">Mot de passe
+            <input id="adultPassword" type="password" autocomplete="current-password" minlength="8" required>
+          </label>
+          <button class="primary settings-save" id="adultEmailSubmit" type="submit">Se connecter</button>
+        </form>
+        <button class="account-toggle" id="accountModeToggle" type="button">Créer un compte adulte</button>
+      </section>
+      <section id="familyPanel" hidden>
+        <div class="account-topline"><strong id="signedInEmail"></strong><button class="secondary-button" id="signOutButton" type="button">Se déconnecter</button></div>
+        <div class="family-manager">
+          <h3>Profils enfant et adresses favorites</h3>
+          <p>Ajoutez d’abord un profil, puis préparez des destinations comme Papa, Maman ou un ami. Les lieux et adresses sont privés au compte adulte.</p>
+          <form class="family-form" id="childProfileForm">
+            <label class="account-field wide" for="childProfileName">Prénom ou surnom de l’enfant
+              <input id="childProfileName" maxlength="40" autocomplete="off" required>
+            </label>
+            <button class="primary" type="submit">Ajouter un profil enfant</button>
+          </form>
+          <div class="family-list" id="parentChildList" aria-live="polite"></div>
+          <div class="parent-favorite-list" id="parentFavoriteList" hidden aria-live="polite"></div>
+          <form class="family-form" id="favoriteForm" hidden>
+            <label class="account-field" for="favoriteRelation">Qui rejoindre ?
+              <select id="favoriteRelation" required>
+                <option value="papa">Papa</option><option value="maman">Maman</option><option value="ami">Un ami</option><option value="autre">Autre proche</option>
+              </select>
+            </label>
+            <label class="account-field" for="favoriteLabel">Nom affiché
+              <input id="favoriteLabel" maxlength="50" placeholder="Chez Papa" required>
+            </label>
+            <label class="account-field wide" for="favoriteAddress">Adresse complète
+              <input id="favoriteAddress" maxlength="240" autocomplete="street-address" required>
+            </label>
+            <button class="primary" type="submit">Enregistrer cette adresse</button>
+          </form>
+        </div>
+      </section>
+      <p class="account-status" id="accountStatus" role="status" aria-live="polite"></p>
+    </div>
+  </dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="./supabase-config.js?v=2"></script>
+  <script>
+    const toast = document.getElementById("toast");
+    let toastTimer;
+    let leafletMap;
+    let routeLayer;
+    let poiLayer;
+    let startMarker;
+    let endMarker;
+    let userMarker;
+    let routeCoordinates = [];
+    let activeRoute = null;
+    let currentCoordinates = null;
+    let destinationCoordinates = null;
+    let watchId = null;
+    let rerouting = false;
+    let lastRerouteAt = 0;
+    let routeGeneration = 0;
+    let nearbyPlacesGeneration = 0;
+    let lastRouteSearchKey = "";
+    let kidMode = false;
+    const geocodeCache = new Map();
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      window.clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(() => toast.classList.remove("show"), 2800);
+    }
+
+    function setRouteStatus(message, isError = false) {
+      const status = document.getElementById("routeStatus");
+      status.textContent = message;
+      status.classList.toggle("is-error", isError);
+    }
+
+    function initializeMap() {
+      if (!window.L) {
+        setRouteStatus("La carte interactive n’a pas pu être chargée. Vérifiez votre connexion puis actualisez la page.", true);
+        return;
+      }
+      leafletMap = window.L.map("leafletMap", { zoomControl: false }).setView([48.8566, 2.3522], 14);
+      window.L.control.zoom({ position: "bottomright" }).addTo(leafletMap);
+      window.L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors'
+      }).addTo(leafletMap);
+      routeLayer = window.L.layerGroup().addTo(leafletMap);
+      poiLayer = window.L.layerGroup().addTo(leafletMap);
+      document.getElementById("leafletMap").classList.add("is-active");
+      document.getElementById("mapCard").classList.add("map-loaded");
+      window.setTimeout(() => leafletMap.invalidateSize(), 100);
+      if (window.location.protocol === "file:") {
+        setRouteStatus("OpenStreetMap bloque les cartes ouvertes en fichier local. Lancez start-navigue.bat et ouvrez l’adresse http://127.0.0.1 affichée.", true);
+      }
+    }
+
+    async function requestJson(url, label, options = {}) {
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 15000);
+      try {
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        if (!response.ok) throw new Error(`${label} indisponible (HTTP ${response.status}). Réessayez dans quelques instants.`);
+        return await response.json();
+      } catch (error) {
+        if (error.name === "AbortError") throw new Error(`${label} met trop de temps à répondre. Vérifiez votre connexion et réessayez.`);
+        if (error instanceof TypeError) throw new Error(`Impossible de joindre ${label}. Vérifiez votre connexion puis réessayez.`);
+        throw error;
+      } finally {
+        window.clearTimeout(timeout);
+      }
+    }
+
+    function getCurrentPosition(options = {}) {
+      if (!navigator.geolocation) {
+        return Promise.reject(new Error("La géolocalisation n’est pas disponible. Saisissez une adresse comme point de départ."));
+      }
+      return new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          (position) => resolve({ lat: position.coords.latitude, lon: position.coords.longitude }),
+          (error) => {
+            const messages = {
+              1: "Accès à la position refusé. Autorisez-la ou saisissez une adresse de départ.",
+              2: "Position indisponible. Vérifiez le signal ou saisissez une adresse de départ.",
+              3: "La demande de position a expiré. Réessayez ou saisissez une adresse de départ."
+            };
+            reject(new Error(messages[error.code] || "Impossible d’obtenir la position. Saisissez une adresse de départ."));
+          },
+          { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000, ...options }
+        );
+      });
+    }
+
+    async function geocodeAddress(address) {
+      const query = address.trim();
+      const cacheKey = query.toLocaleLowerCase();
+      if (geocodeCache.has(cacheKey)) return geocodeCache.get(cacheKey);
+      const params = new URLSearchParams({ q: query, limit: "1", lang: "fr" });
+      const result = await requestJson(`https://photon.komoot.io/api/?${params}`, "La recherche d’adresse");
+      const feature = result.features?.[0];
+      if (!feature) {
+        throw new Error(`Adresse introuvable : « ${query} ». Ajoutez la ville ou le pays, ou essayez une autre formulation.`);
+      }
+      const [lon, lat] = feature.geometry.coordinates;
+      const properties = feature.properties || {};
+      const place = {
+        lat: Number(lat),
+        lon: Number(lon),
+        name: [properties.name, properties.city, properties.country].filter((value, index, values) => value && values.indexOf(value) === index).join(", ") || query
+      };
+      if (!Number.isFinite(place.lat) || !Number.isFinite(place.lon)) throw new Error("L’adresse trouvée n’a pas fourni de coordonnées valides.");
+      geocodeCache.set(cacheKey, place);
+      return place;
+    }
+
+    function distanceBetween(a, b) {
+      const radians = (value) => value * Math.PI / 180;
+      const dLat = radians(b.lat - a.lat);
+      const dLon = radians(b.lon - a.lon);
+      const lat1 = radians(a.lat);
+      const lat2 = radians(b.lat);
+      const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+      return 6371000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+    }
+
+    function setMapEndpoints(origin, destination) {
+      if (!leafletMap) return;
+      const originIcon = window.L.divIcon({ className: "", html: '<div class="location-dot"></div>', iconSize: [18, 18], iconAnchor: [9, 9] });
+      const destinationIcon = window.L.divIcon({ className: "", html: '<div class="destination-dot"><span>●</span></div>', iconSize: [22, 22], iconAnchor: [11, 20] });
+      routeLayer.clearLayers();
+      if (startMarker) leafletMap.removeLayer(startMarker);
+      if (endMarker) leafletMap.removeLayer(endMarker);
+      startMarker = window.L.marker([origin.lat, origin.lon], { icon: originIcon }).addTo(leafletMap).bindPopup("Votre départ");
+      endMarker = window.L.marker([destination.lat, destination.lon], { icon: destinationIcon }).addTo(leafletMap).bindPopup("Votre destination");
+      const bounds = window.L.latLngBounds([origin.lat, origin.lon], [destination.lat, destination.lon]);
+      leafletMap.fitBounds(bounds, { padding: [55, 55], maxZoom: 16 });
+      updateStreetViewLink(destination);
+    }
+
+    function updateUserMarker(point) {
+      if (!leafletMap || !point) return;
+      if (!userMarker) {
+        const icon = window.L.divIcon({ className: "", html: '<div class="location-dot"></div>', iconSize: [18, 18], iconAnchor: [9, 9] });
+        userMarker = window.L.marker([point.lat, point.lon], { icon, zIndexOffset: 1000 }).addTo(leafletMap).bindPopup("Votre position actuelle");
+      } else {
+        userMarker.setLatLng([point.lat, point.lon]);
+      }
+    }
+
+    function updateGuidanceButton(isActive) {
+      const button = document.getElementById("startButton");
+      button.innerHTML = isActive
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>Mettre en pause'
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 3 14 9-14 9V3Z"/></svg>Démarrer le guidage';
+      button.setAttribute("aria-label", isActive ? "Mettre en pause le guidage" : "Démarrer le guidage");
+    }
+
+    function nearestRouteDistance(point) {
+      if (!routeCoordinates.length) return Infinity;
+      let nearest = Infinity;
+      for (let index = 0; index < routeCoordinates.length; index += 5) {
+        const [lat, lon] = routeCoordinates[index];
+        nearest = Math.min(nearest, distanceBetween(point, { lat, lon }));
+        if (nearest < 25) return nearest;
+      }
+      return nearest;
+    }
+
+    async function rerouteFrom(point) {
+      if (rerouting || !destinationCoordinates) return;
+      rerouting = true;
+      lastRerouteAt = Date.now();
+      setRouteStatus("Vous avez quitté le parcours. Recherche d’un nouveau chemin…");
+      if (localStorage.getItem("navigueVoiceEnabled") === "true") {
+        speakText("Vous semblez avoir quitté le chemin. Je recalcule un itinéraire. Arrêtez-vous dans un endroit sûr pour vérifier votre téléphone.");
+      }
+      try {
+        currentCoordinates = point;
+        await calculateRoute(point, destinationCoordinates, selectedMode);
+        document.getElementById("origin").value = "Ma position actuelle";
+        setRouteStatus("Nouvel itinéraire calculé depuis votre position.");
+      } catch (error) {
+        setRouteStatus(error.message, true);
+      } finally {
+        rerouting = false;
+      }
+    }
+
+    function handlePositionUpdate(position) {
+      const point = { lat: position.coords.latitude, lon: position.coords.longitude };
+      currentCoordinates = point;
+      updateUserMarker(point);
+      if (active && !rerouting && Date.now() - lastRerouteAt > 15000 && nearestRouteDistance(point) > 65) {
+        rerouteFrom(point);
+      }
+    }
+
+    function updateStreetViewLink(point) {
+      const mapCard = document.getElementById("mapCard");
+      const frame = document.getElementById("streetViewFrame");
+      if (!point) {
+        mapCard.classList.remove("has-coordinates");
+        frame.classList.remove("is-active");
+        frame.removeAttribute("src");
+        document.getElementById("viewDisclaimer").textContent = "Calculez un itinéraire pour charger la vue réelle à la destination.";
+        return;
+      }
+      const params = new URLSearchParams({ layer: "c", cbll: `${point.lat},${point.lon}`, cbp: "12,0,0,0,0", output: "svembed" });
+      frame.src = `https://maps.google.com/maps?${params}`;
+      frame.classList.toggle("is-active", mapCard.dataset.view === "street");
+      document.getElementById("viewDisclaimer").textContent = "Panorama Google Street View. La couverture dépend des images disponibles à cette destination.";
+      mapCard.classList.add("has-coordinates");
+    }
+
+    function formatDistance(meters) {
+      return meters < 1000 ? `${Math.round(meters / 10) * 10} m` : `${(meters / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} km`;
+    }
+
+    function formatDuration(seconds) {
+      const minutes = Math.max(1, Math.round(seconds / 60));
+      if (minutes < 60) return `${minutes} min`;
+      const hours = Math.floor(minutes / 60);
+      const remainingMinutes = minutes % 60;
+      return remainingMinutes ? `${hours} h ${remainingMinutes} min` : `${hours} h`;
+    }
+
+    function formatArrival(seconds) {
+      const arrival = new Date(Date.now() + seconds * 1000);
+      return `Arrivée ${arrival.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
+    }
+
+    function maneuverTitle(step, index) {
+      const maneuver = step.maneuver || {};
+      const modifier = maneuver.modifier || "";
+      const turns = {
+        left: "Tournez à gauche",
+        right: "Tournez à droite",
+        "slight left": "Prenez légèrement à gauche",
+        "slight right": "Prenez légèrement à droite",
+        "sharp left": "Tournez franchement à gauche",
+        "sharp right": "Tournez franchement à droite",
+        uturn: "Faites demi-tour prudemment"
+      };
+      if (maneuver.type === "arrive") return "Vous êtes arrivé·e !";
+      if (maneuver.type === "depart") return "Commencez le trajet";
+      if (maneuver.type === "roundabout" || maneuver.type === "rotary") {
+        const exit = maneuver.exit ? `, prenez la ${maneuver.exit}${maneuver.exit === 1 ? "re" : "e"} sortie` : "";
+        return `Au rond-point${exit}`;
+      }
+      if (maneuver.type === "on ramp" || maneuver.type === "off ramp") return modifier.includes("left") ? "Prenez la bretelle à gauche" : "Prenez la bretelle à droite";
+      return turns[modifier] || (index === 0 ? "Continuez votre chemin" : "Continuez tout droit");
+    }
+
+    function renderRealSteps(route) {
+      const steps = route.legs.flatMap((leg) => leg.steps || []).filter((step) => step.maneuver?.type === "arrive" || (step.distance || 0) > 5);
+      if (steps.length === 0) throw new Error("Le calculateur n’a pas renvoyé d’étapes détaillées pour cet itinéraire.");
+      const visibleSteps = steps.slice(0, 7);
+      const list = document.getElementById("stepList");
+      list.replaceChildren();
+      visibleSteps.forEach((step, index) => {
+        const item = document.createElement("li");
+        item.className = `step${index === 0 ? " is-current" : ""}`;
+        const icon = document.createElement("span");
+        icon.className = "step-icon";
+        icon.textContent = index === 0 ? "●" : index === visibleSteps.length - 1 ? "✓" : "➜";
+        const content = document.createElement("div");
+        const title = document.createElement("strong");
+        title.textContent = kidMode
+          ? maneuverTitle(step, index).replace(/^Continuez/, "Continue").replace(/^Tournez/, "Tourne").replace(/^Prenez/, "Prends")
+          : maneuverTitle(step, index);
+        const detail = document.createElement("small");
+        const roadName = step.name ? ` sur ${step.name}` : "";
+        detail.textContent = `${formatDistance(step.distance || 0)}${roadName}`;
+        content.append(title, detail);
+        item.append(icon, content);
+        list.append(item);
+      });
+      if (steps.length > visibleSteps.length) {
+        const rest = document.createElement("li");
+        rest.className = "step";
+        rest.innerHTML = "<span class=\"step-icon\">…</span><div><strong>La suite du trajet</strong><small>Continuez à suivre les prochaines consignes.</small></div>";
+        list.append(rest);
+      }
+    }
+
+    function decodePolyline6(encoded) {
+      const coordinates = [];
+      let index = 0;
+      let latitude = 0;
+      let longitude = 0;
+      while (index < encoded.length) {
+        let result = 0;
+        let shift = 0;
+        let byte;
+        do {
+          byte = encoded.charCodeAt(index++) - 63;
+          result |= (byte & 0x1f) << shift;
+          shift += 5;
+        } while (byte >= 0x20 && index < encoded.length);
+        latitude += result & 1 ? ~(result >> 1) : result >> 1;
+        result = 0;
+        shift = 0;
+        do {
+          byte = encoded.charCodeAt(index++) - 63;
+          result |= (byte & 0x1f) << shift;
+          shift += 5;
+        } while (byte >= 0x20 && index < encoded.length);
+        longitude += result & 1 ? ~(result >> 1) : result >> 1;
+        coordinates.push([latitude / 1e6, longitude / 1e6]);
+      }
+      return coordinates;
+    }
+
+    function transitModeLabel(mode) {
+      return ({
+        WALK: "à pied",
+        BUS: "bus",
+        SUBWAY: "métro",
+        TRAM: "tramway",
+        RAIL: "train",
+        REGIONAL_RAIL: "train régional",
+        HIGH_SPEED_RAIL: "train à grande vitesse",
+        FERRY: "bateau",
+        CABLE_CAR: "téléphérique",
+        FUNICULAR: "funiculaire"
+      })[mode] || "transport en commun";
+    }
+
+    function formatTransitTime(value) {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? "" : date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+    }
+
+    function renderTransitItinerary(itinerary) {
+      routeLayer.clearLayers();
+      routeCoordinates = [];
+      const colors = { WALK: "#528166", BUS: "#3874ad", SUBWAY: "#8a58a8", TRAM: "#d27b32", RAIL: "#c75d4d", REGIONAL_RAIL: "#c75d4d", HIGH_SPEED_RAIL: "#c75d4d", FERRY: "#258c9a" };
+      itinerary.legs.forEach((leg) => {
+        const points = leg.legGeometry?.points ? decodePolyline6(leg.legGeometry.points) : [];
+        if (points.length < 2) return;
+        routeCoordinates.push(...points);
+        window.L.polyline(points, {
+          color: leg.routeColor ? `#${leg.routeColor}` : colors[leg.mode] || "#397755",
+          weight: leg.mode === "WALK" ? 4 : 7,
+          opacity: .9,
+          dashArray: leg.mode === "WALK" ? "7 7" : null,
+          lineCap: "round",
+          lineJoin: "round"
+        }).addTo(routeLayer);
+      });
+      if (routeCoordinates.length) {
+        leafletMap.fitBounds(window.L.latLngBounds(routeCoordinates), { padding: [55, 55], maxZoom: 16 });
+      }
+      const list = document.getElementById("stepList");
+      list.replaceChildren();
+      itinerary.legs.slice(0, 8).forEach((leg, index) => {
+        const item = document.createElement("li");
+        item.className = `step${index === 0 ? " is-current" : ""}`;
+        const icon = document.createElement("span");
+        icon.className = "step-icon";
+        icon.textContent = leg.mode === "WALK" ? "🚶" : (leg.routeShortName || transitModeLabel(leg.mode).slice(0, 1).toUpperCase());
+        const content = document.createElement("div");
+        const heading = document.createElement("strong");
+        const mode = transitModeLabel(leg.mode);
+        const line = leg.routeShortName ? ` · ligne ${leg.routeShortName}` : "";
+        heading.textContent = leg.mode === "WALK"
+          ? `${kidMode ? "Marche" : "Marchez"} jusqu’à ${leg.to?.name || "votre prochain arrêt"}`
+          : `${kidMode ? "Prends" : "Prenez"} le ${mode}${line}`;
+        const detail = document.createElement("small");
+        const from = leg.from?.name || "Départ";
+        const to = leg.to?.name || "Arrivée";
+        const times = [formatTransitTime(leg.startTime), formatTransitTime(leg.endTime)].filter(Boolean).join(" – ");
+        const headsign = leg.headsign ? ` · direction ${leg.headsign}` : "";
+        const distance = leg.mode === "WALK" && Number.isFinite(leg.distance) ? ` · ${formatDistance(leg.distance)}` : "";
+        detail.textContent = `${from} → ${to}${headsign}${times ? ` · ${times}` : ""}${distance}`;
+        content.append(heading, detail);
+        item.append(icon, content);
+        list.append(item);
+      });
+      if (itinerary.legs.length > 8) {
+        const rest = document.createElement("li");
+        rest.className = "step";
+        rest.textContent = `… et ${itinerary.legs.length - 8} autres étapes`;
+        list.append(rest);
+      }
+      showJourneyAnimation("transit");
+    }
+
+    async function calculateTransitRoute(origin, destination, generation) {
+      const params = new URLSearchParams({
+        fromPlace: `${origin.lat},${origin.lon}`,
+        toPlace: `${destination.lat},${destination.lon}`,
+        time: new Date().toISOString(),
+        numItineraries: "5"
+      });
+      const result = await requestJson(`https://api.transitous.org/api/v6/plan?${params}`, "Le calcul des transports en commun");
+      if (generation !== routeGeneration) return null;
+      const itineraries = result.itineraries || [];
+      if (!itineraries.length) {
+        throw new Error("Aucun trajet en transports en commun n’a été trouvé pour ce lieu et cet horaire.");
+      }
+      if (!window.L || !leafletMap) throw new Error("La carte n’est pas disponible. Vérifiez votre connexion et actualisez la page.");
+      setMapEndpoints(origin, destination);
+      activeRoute = { origin, destination, mode: "transit", itineraries, itineraryIndex: 0, itinerary: itineraries[0] };
+      renderTransitItinerary(activeRoute.itinerary);
+      document.getElementById("transitNote").classList.add("is-visible");
+      document.getElementById("routeDuration").textContent = formatDuration(activeRoute.itinerary.duration);
+      document.getElementById("routeDistance").textContent = `${activeRoute.itinerary.transfers} correspondance${activeRoute.itinerary.transfers === 1 ? "" : "s"} · ${itineraries.length} options`;
+      document.getElementById("routeArrival").textContent = `Arrivée ${formatTransitTime(activeRoute.itinerary.endTime)}`;
+      const alternativeButton = document.getElementById("alternativeButton");
+      alternativeButton.disabled = itineraries.length < 2;
+      alternativeButton.textContent = itineraries.length > 1 ? "Autre option" : "Pas d’autre option";
+      document.getElementById("mapCaptionTitle").textContent = modes.transit.label;
+      return activeRoute;
+    }
+
+    function showRouteOption(route, origin, destination, mode) {
+      routeCoordinates = route.geometry.coordinates.map(([lon, lat]) => [lat, lon]);
+      if (routeCoordinates.length < 2) throw new Error("Le calculateur n’a pas fourni de tracé exploitable.");
+      routeLayer.clearLayers();
+      setMapEndpoints(origin, destination);
+      window.L.polyline(routeCoordinates, { color: "#397755", weight: 6, opacity: .9, lineCap: "round", lineJoin: "round" }).addTo(routeLayer);
+      leafletMap.fitBounds(window.L.latLngBounds(routeCoordinates), { padding: [55, 55], maxZoom: 17 });
+      document.getElementById("transitNote").classList.remove("is-visible");
+      document.getElementById("routeDuration").textContent = formatDuration(route.duration);
+      const modeNames = { walk: "à pied", bike: "à vélo", car: "en voiture", taxi: "en VTC" };
+      document.getElementById("routeDistance").textContent = `${formatDistance(route.distance)} · ${modeNames[mode]}`;
+      document.getElementById("routeArrival").textContent = formatArrival(route.duration);
+      document.getElementById("mapCaptionTitle").textContent = modes[mode].label;
+      renderRealSteps(route);
+      showJourneyAnimation(mode);
+    }
+
+    function showJourneyAnimation(mode) {
+      const animation = document.getElementById("journeyAnimation");
+      const traveller = document.querySelector("#animationTraveller use");
+      traveller.setAttribute("href", modes[mode]?.icon || modes.walk.icon);
+      document.getElementById("animationCaption").textContent = kidMode
+        ? "Bravo ! Le trajet est prêt."
+        : "Votre trajet est prêt : suivez les étapes.";
+      animation.classList.add("is-visible");
+    }
+
+    async function calculateRoute(origin, destination, mode = selectedMode, generation = routeGeneration) {
+      if (generation !== routeGeneration) return null;
+      if (mode === "transit") {
+        return calculateTransitRoute(origin, destination, generation);
+      }
+      if (!leafletMap || !window.L) {
+        throw new Error("La carte n’est pas disponible. Vérifiez votre connexion et actualisez la page.");
+      }
+      const service = mode === "walk" ? "routed-foot/route/v1/foot" : mode === "bike" ? "routed-bike/route/v1/driving" : "routed-car/route/v1/driving";
+      const coords = `${origin.lon},${origin.lat};${destination.lon},${destination.lat}`;
+      const params = new URLSearchParams({ overview: "full", geometries: "geojson", steps: "true", alternatives: "true" });
+      const payload = await requestJson(`https://routing.openstreetmap.de/${service}/${coords}?${params}`, "Le calcul d’itinéraire");
+      if (generation !== routeGeneration) return null;
+      if (payload.code !== "Ok" || !payload.routes?.length) {
+        throw new Error("Aucun itinéraire trouvé pour ces adresses et ce mode de déplacement. Essayez un autre mode.");
+      }
+      const routes = payload.routes;
+      if (poiLayer) poiLayer.clearLayers();
+      activeRoute = { origin, destination, mode, routes, routeIndex: 0, route: routes[0] };
+      showRouteOption(activeRoute.route, origin, destination, mode);
+      const alternativeButton = document.getElementById("alternativeButton");
+      alternativeButton.disabled = routes.length < 2;
+      alternativeButton.textContent = routes.length > 1 ? "Autre option" : "Pas d’autre option";
+      return activeRoute;
+    }
+
+    async function findRoute({ originOverride, destinationOverride } = {}) {
+      const generation = ++routeGeneration;
+      const mode = selectedMode;
+      const destinationText = document.getElementById("destination").value.trim();
+      const originText = document.getElementById("origin").value.trim();
+      if (!destinationText) {
+        document.getElementById("destination").focus();
+        throw new Error("Indiquez une destination pour préparer votre trajet.");
+      }
+      activeRoute = null;
+      lastRouteSearchKey = "";
+      routeCoordinates = [];
+      nearbyPlacesGeneration += 1;
+      routeLayer?.clearLayers();
+      if (poiLayer) poiLayer.clearLayers();
+      document.getElementById("routeDuration").textContent = "—";
+      document.getElementById("routeDistance").textContent = "Recherche de l’itinéraire…";
+      document.getElementById("routeArrival").textContent = "En attente";
+      document.getElementById("alternativeButton").disabled = true;
+      document.getElementById("journeyAnimation").classList.remove("is-visible");
+      document.getElementById("alternativeButton").textContent = "Autre option";
+      document.getElementById("discoverItems").replaceChildren(document.createTextNode("Recherche des lieux à proximité…"));
+      document.getElementById("mapDestination").textContent = `Recherche vers ${destinationText}`;
+      document.getElementById("mapCard").classList.remove("has-coordinates");
+      setPendingInstructions("Recherche du trajet en cours", "Les étapes réelles s’afficheront ici après le calcul.");
+      const destination = destinationOverride || (destinationCoordinates && destinationText === document.getElementById("mapDestination").textContent.replace(/^En route vers /, "")
+        ? destinationCoordinates
+        : await geocodeAddress(destinationText));
+      let origin = originOverride;
+      if (!origin) {
+        if (!originText || /^ma position/i.test(originText)) {
+          setRouteStatus("Autorisez l’accès à votre position ou saisissez un point de départ.");
+          origin = await getCurrentPosition();
+        } else {
+          origin = await geocodeAddress(originText);
+        }
+      }
+      if (generation !== routeGeneration) return null;
+      currentCoordinates = origin;
+      destinationCoordinates = destination;
+      setMapEndpoints(origin, destination);
+      document.getElementById("mapDestination").textContent = `En route vers ${destinationText}`;
+      if (document.getElementById("accessibilityToggle").getAttribute("aria-checked") === "true") {
+        document.getElementById("accessibilityNote").classList.add("is-visible");
+      } else {
+        document.getElementById("accessibilityNote").classList.remove("is-visible");
+      }
+      const result = await calculateRoute(origin, destination, mode, generation);
+      if (!result || generation !== routeGeneration) return null;
+      lastRouteSearchKey = `${originText.toLocaleLowerCase()}|${destinationText.toLocaleLowerCase()}`;
+      if (mode === "taxi") {
+        document.getElementById("routeDistance").textContent = `${formatDistance(result.route.distance)} · VTC ou taxi`;
+      }
+      document.getElementById("mapCard").classList.add("has-coordinates");
+      document.getElementById("discoverItems").dataset.loaded = "false";
+      if (mode !== "transit") {
+        loadNearbyPlaces("all", destination).catch((error) => showToast(error.message));
+      } else {
+        document.getElementById("discoverItems").replaceChildren(document.createTextNode("Lieux à proximité indisponibles pour ce trajet externe."));
+      }
+      return result;
+    }
+
+    async function loadNearbyPlaces(category = "all", center = destinationCoordinates) {
+      if (!center) return;
+      const generation = ++nearbyPlacesGeneration;
+      const categories = {
+        park: { query: "park", tag: "leisure:park", label: "Parcs", accepted: new Set(["park", "garden", "nature_reserve", "recreation_ground"]) },
+        food: { query: "restaurant", tag: "amenity:restaurant", label: "Restaurants", accepted: new Set(["restaurant", "cafe", "fast_food", "food_court", "pub", "bar", "bakery"]) },
+        culture: { query: "museum", tag: "tourism:museum", label: "Culture", accepted: new Set(["museum", "gallery", "arts_centre", "attraction", "theatre", "monument"]) }
+      };
+      const categoriesToLoad = category === "all" ? Object.keys(categories) : [category];
+      const itemLayer = document.getElementById("discoverItems");
+      const filterButtons = document.querySelectorAll(".discover-filter[data-filter]");
+      if (category !== "all") filterButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.filter === category)));
+      itemLayer.replaceChildren();
+      itemLayer.dataset.loaded = "true";
+      for (const key of categoriesToLoad) {
+        const config = categories[key];
+        const latDelta = 0.045;
+        const lonDelta = latDelta / Math.max(0.25, Math.cos(center.lat * Math.PI / 180));
+        const bounds = [center.lon - lonDelta, center.lat - latDelta, center.lon + lonDelta, center.lat + latDelta].join(",");
+        const params = new URLSearchParams({
+          q: config.query,
+          lat: String(center.lat),
+          lon: String(center.lon),
+          bbox: bounds,
+          osm_tag: config.tag,
+          limit: "25",
+          lang: "fr"
+        });
+        const result = await requestJson(`https://photon.komoot.io/api/?${params}`, `La recherche de lieux « ${config.label} »`);
+        if (generation !== nearbyPlacesGeneration) return;
+        const places = (result.features || []).map((feature) => {
+          const properties = feature.properties || {};
+          const [lon, lat] = feature.geometry.coordinates;
+          return {
+            name: properties.name || properties.street || config.label,
+            type: properties.osm_value || config.label,
+            key: properties.osm_key,
+            lat, lon,
+            address: [properties.street, properties.city || properties.town || properties.village].filter(Boolean).join(", "),
+            distance: distanceBetween(center, { lat, lon })
+          };
+        }).filter((place) => Number.isFinite(place.lat) && Number.isFinite(place.lon) && place.distance <= 5000 && config.accepted.has(place.type))
+          .sort((a, b) => a.distance - b.distance).slice(0, 8);
+        places.forEach((place) => {
+          const article = document.createElement("article");
+          article.className = "place";
+          article.dataset.category = key;
+          const name = document.createElement("strong");
+          name.textContent = place.name;
+          const description = document.createElement("span");
+          description.append(document.createTextNode(`${config.label} · `));
+          const distance = document.createElement("span");
+          distance.className = "distance";
+          distance.textContent = formatDistance(place.distance);
+          description.append(distance);
+          if (place.address) {
+              const address = document.createElement("span");
+            address.textContent = place.address;
+            article.append(name, description, address);
+          } else {
+            article.append(name, description);
+          }
+          const goButton = document.createElement("button");
+          goButton.type = "button";
+          goButton.textContent = "Y aller";
+          goButton.addEventListener("click", () => {
+            document.getElementById("destination").value = place.address ? `${place.name}, ${place.address}` : place.name;
+            destinationCoordinates = { lat: place.lat, lon: place.lon, name: place.name };
+            findRoute({ destinationOverride: destinationCoordinates }).catch((error) => setRouteStatus(error.message, true));
+          });
+          article.append(goButton);
+          itemLayer.append(article);
+          if (poiLayer && leafletMap) {
+            window.L.circleMarker([place.lat, place.lon], { radius: 6, color: "#397755", fillColor: "#bfe294", fillOpacity: .95 })
+              .bindPopup(`<strong>${escapeHtml(place.name)}</strong><br>${formatDistance(place.distance)}`).addTo(poiLayer);
+          }
+        });
+      }
+      if (!itemLayer.children.length) {
+        const message = document.createElement("span");
+        message.textContent = "Aucun lieu proche trouvé dans les données cartographiques.";
+        itemLayer.append(message);
+      }
+    }
+
+    function escapeHtml(text) {
+      return text.replace(/[&<>"']/g, (character) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      })[character]);
+    }
+
+    initializeMap();
+
+    const modes = {
+      walk: { label: "Itinéraire à pied", icon: "#transport-walk" },
+      bike: { label: "Itinéraire à vélo", icon: "#transport-bike" },
+      transit: { label: "Itinéraire en transports", icon: "#transport-transit" },
+      car: { label: "Itinéraire en voiture", icon: "#transport-car" },
+      taxi: { label: "Itinéraire en VTC ou taxi", icon: "#transport-taxi" }
+    };
+    let selectedMode = "walk";
+    let active = false;
+    let dictation;
+    const mapViews = {
+      classic: { description: "Carte OpenStreetMap réelle ; le trajet s’affichera après son calcul", caption: "Carte OpenStreetMap", watermark: "Données OpenStreetMap", note: "• données cartographiques" },
+      "3d": { description: "Perspective inclinée sur la carte réelle ; les bâtiments ne sont pas extrudés en 3D", caption: "Perspective 3D", watermark: "Perspective · OpenStreetMap", note: "• perspective cartographique" },
+      street: { description: "Panorama réel Google Street View à destination", caption: "Vue réelle de la rue", watermark: "Google Street View", note: "• panorama réel, couverture variable" }
+    };
+
+    document.querySelectorAll(".view-button").forEach((button) => {
+      button.addEventListener("click", () => {
+        const view = button.dataset.view;
+        const mapCard = document.getElementById("mapCard");
+        const viewInfo = mapViews[view];
+        mapCard.dataset.view = view;
+        document.querySelectorAll(".view-button").forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+        document.querySelectorAll(".map-art").forEach((art) => art.classList.toggle("is-active", view === "classic" && art.classList.contains("classic")));
+        document.getElementById("leafletMap").classList.toggle("is-active", view === "classic" || view === "3d");
+        document.getElementById("leafletMap").classList.toggle("is-3d", view === "3d");
+        document.getElementById("streetViewFrame").classList.toggle("is-active", view === "street" && mapCard.classList.contains("has-coordinates"));
+        document.querySelector(".street-scene").classList.toggle("is-active", view === "street" && !mapCard.classList.contains("has-coordinates"));
+        if (view === "street" && !mapCard.classList.contains("has-coordinates")) {
+          document.getElementById("viewDisclaimer").textContent = "Calculez un itinéraire pour charger la vue réelle à la destination.";
+        }
+        document.getElementById("mapViewDescription").textContent = viewInfo.description;
+        document.getElementById("mapCaptionTitle").textContent = viewInfo.caption;
+        document.getElementById("mapCaptionNote").textContent = viewInfo.note;
+        document.getElementById("mapWatermark").textContent = viewInfo.watermark;
+        const label = view === "street" && mapCard.classList.contains("has-coordinates")
+          ? "Panorama Google Street View à la destination"
+          : view === "3d"
+            ? "Carte OpenStreetMap inclinée en perspective"
+            : `${viewInfo.caption} — ${viewInfo.description}`;
+        mapCard.setAttribute("aria-label", label);
+        window.setTimeout(() => leafletMap?.invalidateSize(), 100);
+        showToast(view === "street"
+          ? mapCard.classList.contains("has-coordinates")
+            ? "Chargement du panorama réel à votre destination."
+            : "Calculez un itinéraire pour afficher un panorama de rue à la destination."
+          : view === "3d"
+            ? "Perspective activée sur la carte réelle et son itinéraire."
+            : `${viewInfo.caption} chargé. Les tuiles cartographiques viennent d’OpenStreetMap.`);
+      });
+    });
+
+    function speakText(text) {
+      if (!("speechSynthesis" in window)) {
+        showToast("La lecture vocale n’est pas disponible dans ce navigateur.");
+        return false;
+      }
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      const language = localStorage.getItem("navigueLanguage") || "fr-FR";
+      utterance.lang = language;
+      utterance.rate = Number(localStorage.getItem("navigueSpeechRate") || "0.85");
+      utterance.onerror = (event) => {
+        if (event.error !== "canceled" && event.error !== "interrupted") {
+          showToast("La lecture vocale a échoué. Touchez le bouton de voix pour réessayer.");
+        }
+      };
+      window.speechSynthesis.speak(utterance);
+      return true;
+    }
+
+    function welcomeMessage() {
+      const language = localStorage.getItem("navigueLanguage") || "fr-FR";
+      const messages = {
+        "fr-FR": "Bienvenue sur NaVigue. Je suis là pour vous guider, pas à pas et à votre rythme.",
+        "en-US": "Welcome to NaVigue. I am here to guide you, one step at a time, at your own pace.",
+        "es-ES": "Te damos la bienvenida a NaVigue. Estoy aquí para guiarte paso a paso y a tu ritmo."
+      };
+      return messages[language];
+    }
+
+    function setPendingInstructions(title, detail) {
+      const item = document.createElement("li");
+      item.className = "step is-current";
+      const icon = document.createElement("span");
+      icon.className = "step-icon";
+      icon.textContent = "i";
+      const content = document.createElement("div");
+      const heading = document.createElement("strong");
+      heading.textContent = title;
+      const description = document.createElement("small");
+      description.textContent = detail;
+      content.append(heading, description);
+      item.append(icon, content);
+      document.getElementById("stepList").replaceChildren(item);
+    }
+
+    function currentVoiceInstruction() {
+      if (selectedMode === "transit" && activeRoute?.itinerary) {
+        const step = document.querySelector("#stepList .step.is-current");
+        return step ? `${step.querySelector("strong")?.textContent || ""}. ${step.querySelector("small")?.textContent || ""}` : "Suivez les étapes de transport affichées dans NaVigue.";
+      }
+      if (selectedMode === "transit") return "Calculez d’abord un itinéraire en transports en commun.";
+      if (!activeRoute?.route) return "Calculez d’abord un itinéraire pour obtenir une consigne vocale.";
+      const currentStep = document.querySelector("#stepList .step.is-current");
+      if (!currentStep) return "Aucune consigne n’est disponible pour le moment.";
+      const title = currentStep.querySelector("strong")?.textContent || "";
+      const detail = currentStep.querySelector("small")?.textContent || "";
+      return `${title}. ${detail}`.trim();
+    }
+
+    function updateMode(mode, button) {
+      if (kidMode && (mode === "car" || mode === "taxi")) {
+        showToast("En mode enfant, demande à un adulte de choisir un autre moyen de transport.");
+        return;
+      }
+      routeGeneration += 1;
+      selectedMode = mode;
+      document.getElementById("journeyAnimation").classList.remove("is-visible");
+      document.querySelectorAll(".mode").forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+      const route = modes[mode];
+      document.getElementById("mapCaptionTitle").textContent = route.label;
+      document.getElementById("travelerIcon").setAttribute("href", route.icon);
+      document.getElementById("animationTraveller").classList.toggle("is-animating", mode !== "transit");
+      document.getElementById("bookingNote").classList.toggle("is-visible", mode === "taxi");
+      document.getElementById("transitNote").classList.toggle("is-visible", mode === "transit");
+      document.getElementById("accessibilityNote").classList.toggle("is-visible", mode !== "transit" && document.getElementById("accessibilityToggle").getAttribute("aria-checked") === "true");
+      const currentSearchKey = `${document.getElementById("origin").value.trim().toLocaleLowerCase()}|${document.getElementById("destination").value.trim().toLocaleLowerCase()}`;
+      document.getElementById("alternativeButton").disabled = true;
+      if (mode === "transit") {
+        if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+        if (active) {
+          active = false;
+          updateGuidanceButton(false);
+          document.getElementById("mapCard").classList.remove("is-guiding");
+        }
+        activeRoute = null;
+        const hasRouteForCurrentInputs = currentCoordinates && destinationCoordinates && currentSearchKey === lastRouteSearchKey;
+        if (hasRouteForCurrentInputs) {
+          setRouteStatus("Recherche des horaires et correspondances…");
+          routeLayer?.clearLayers();
+          routeCoordinates = [];
+          document.getElementById("routeDuration").textContent = "—";
+          document.getElementById("routeDistance").textContent = "Recherche des transports…";
+          document.getElementById("routeArrival").textContent = "En attente";
+          setPendingInstructions("Calcul du trajet en transports en commun", "Recherche des horaires, arrêts et correspondances.");
+          const generation = ++routeGeneration;
+          calculateRoute(currentCoordinates, destinationCoordinates, mode, generation)
+            .then((result) => { if (result && generation === routeGeneration) setRouteStatus("Trajet en transports calculé par Transitous."); })
+            .catch((error) => { if (generation === routeGeneration) setRouteStatus(error.message, true); });
+        } else {
+          routeLayer?.clearLayers();
+          document.getElementById("routeDuration").textContent = "—";
+          document.getElementById("routeDistance").textContent = "Calculez un itinéraire";
+          document.getElementById("routeArrival").textContent = "En attente";
+          setPendingInstructions("Indiquez un départ et une destination", "NaVigue calculera les horaires et les correspondances.");
+        }
+      } else if (currentCoordinates && destinationCoordinates && currentSearchKey === lastRouteSearchKey) {
+        setRouteStatus("Calcul de l’itinéraire…");
+        activeRoute = null;
+        routeCoordinates = [];
+        routeLayer?.clearLayers();
+        document.getElementById("routeDuration").textContent = "—";
+        document.getElementById("routeDistance").textContent = "Recalcul de l’itinéraire…";
+        document.getElementById("routeArrival").textContent = "En attente";
+        setPendingInstructions("Recalcul du trajet en cours", "Les étapes vont être mises à jour selon le mode choisi.");
+        const generation = ++routeGeneration;
+        calculateRoute(currentCoordinates, destinationCoordinates, mode, generation)
+          .then((result) => { if (result && generation === routeGeneration) setRouteStatus("Itinéraire recalculé."); })
+          .catch((error) => setRouteStatus(error.message, true));
+      } else {
+        activeRoute = null;
+        routeLayer?.clearLayers();
+        document.getElementById("routeDuration").textContent = "—";
+        document.getElementById("routeDistance").textContent = "Calculez un itinéraire";
+        document.getElementById("routeArrival").textContent = "En attente";
+        setPendingInstructions("Aucun itinéraire calculé", "Indiquez un départ et une destination pour obtenir des étapes réelles.");
+      }
+      document.getElementById("alternativeButton").textContent = "Autre option";
+      showToast(mode === "transit" && currentCoordinates && destinationCoordinates && currentSearchKey === lastRouteSearchKey
+        ? "Recherche d’un itinéraire en transports en commun dans NaVigue."
+        : activeRoute && mode !== "transit"
+        ? currentSearchKey === lastRouteSearchKey
+          ? `Calcul de l’itinéraire ${button.textContent.trim()} en cours.`
+          : `Mode ${button.textContent.trim()} sélectionné. Relancez la recherche pour recalculer le trajet.`
+        : mode === "transit"
+          ? "Saisissez votre départ et votre destination pour calculer les transports dans NaVigue."
+          : `Option ${button.textContent.trim()} sélectionnée. Saisissez votre départ et destination pour calculer le vrai trajet.`);
+    }
+
+    document.querySelectorAll(".mode").forEach((button) => {
+      button.addEventListener("click", () => {
+        updateMode(button.dataset.mode, button);
+      });
+    });
+
+    document.querySelectorAll(".provider-button").forEach((button) => {
+      button.addEventListener("click", () => {
+        document.querySelectorAll(".provider-button").forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+        const destination = document.getElementById("destination").value.trim();
+        let url;
+        if (button.dataset.provider === "Uber") {
+          const params = new URLSearchParams({ action: "setPickup", pickup: "my_location" });
+          if (destinationCoordinates) {
+            params.set("dropoff[latitude]", String(destinationCoordinates.lat));
+            params.set("dropoff[longitude]", String(destinationCoordinates.lon));
+          } else {
+            params.set("dropoff[formatted_address]", destination);
+          }
+          url = `https://m.uber.com/ul/?${params}`;
+        } else if (button.dataset.provider === "Bolt") {
+          url = "https://bolt.eu/";
+        } else {
+          const params = new URLSearchParams({ api: "1", query: "taxi near me" });
+          url = `https://www.google.com/maps/search/?${params}`;
+        }
+        window.open(url, "_blank", "noopener,noreferrer");
+        showToast(`${button.dataset.provider} s’ouvre dans un nouvel onglet. Vérifiez le tarif et la destination avant toute réservation.`);
+      });
+    });
+
+    document.querySelectorAll(".discover-filter").forEach((button) => {
+      if (!button.hasAttribute("data-filter")) return;
+      button.addEventListener("click", () => {
+        const category = button.dataset.filter;
+        document.querySelectorAll(".discover-filter[data-filter]").forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+        if (!destinationCoordinates) {
+          showToast("Calculez d’abord un itinéraire pour rechercher les lieux proches de votre destination.");
+          return;
+        }
+        if (poiLayer) poiLayer.clearLayers();
+        loadNearbyPlaces(category, destinationCoordinates).catch((error) => showToast(error.message));
+      });
+    });
+
+    document.getElementById("journeyForm").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const submit = event.currentTarget.querySelector('button[type="submit"]');
+      submit.disabled = true;
+      setRouteStatus("Recherche des adresses et calcul de l’itinéraire…");
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+        active = false;
+        updateGuidanceButton(false);
+      }
+      findRoute().then((result) => {
+        if (!result) {
+          setRouteStatus("Le mode de déplacement a changé pendant le calcul. Relancez la recherche.");
+          return;
+        }
+        const accessible = document.getElementById("accessibilityToggle").getAttribute("aria-checked") === "true";
+        setRouteStatus(accessible
+          ? "Itinéraire calculé avec OpenStreetMap. Accessibilité à vérifier : trottoirs et ascenseurs ne sont pas garantis."
+          : result.mode === "transit"
+            ? "Itinéraire, horaires et correspondances calculés dans NaVigue par Transitous."
+            : "Itinéraire calculé à partir des données OpenStreetMap.");
+        if (result.mode === "transit") document.getElementById("transitNote").classList.add("is-visible");
+      }).catch((error) => setRouteStatus(error.message, true)).finally(() => { submit.disabled = false; });
+    });
+
+    document.getElementById("swapButton").addEventListener("click", () => {
+      const origin = document.getElementById("origin");
+      const destination = document.getElementById("destination");
+      [origin.value, destination.value] = [destination.value, origin.value];
+      showToast("Départ et destination inversés.");
+    });
+
+    document.getElementById("startButton").addEventListener("click", async () => {
+      if (selectedMode === "transit") {
+        if (active) {
+          active = false;
+          document.getElementById("mapCard").classList.remove("is-guiding");
+          updateGuidanceButton(false);
+          if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+          setRouteStatus("Guidage en transports mis en pause.");
+          return;
+        }
+        if (!activeRoute?.itinerary) {
+          document.getElementById("journeyForm").requestSubmit();
+          return;
+        }
+        active = true;
+        document.getElementById("mapCard").classList.add("is-guiding");
+        updateGuidanceButton(true);
+        if (localStorage.getItem("navigueVoiceEnabled") === "true") speakText(currentVoiceInstruction());
+        setRouteStatus("Guidage en transports activé. Suivez les arrêts, horaires et correspondances affichés dans NaVigue.");
+        return;
+      }
+      if (!activeRoute) {
+        document.getElementById("journeyForm").requestSubmit();
+        return;
+      }
+      if (active) {
+        active = false;
+        if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+        document.getElementById("mapCard").classList.remove("is-guiding");
+        if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+        updateGuidanceButton(false);
+        setRouteStatus("Guidage en pause.");
+        return;
+      }
+      if (!navigator.geolocation) {
+        setRouteStatus("La géolocalisation n’est pas disponible. Le guidage en direct ne peut pas démarrer.", true);
+        return;
+      }
+      setRouteStatus("Demande de position en cours. Autorisez la localisation pour démarrer le guidage.");
+      try {
+        const point = await getCurrentPosition();
+        currentCoordinates = point;
+        await calculateRoute(point, destinationCoordinates, selectedMode);
+        active = true;
+        document.getElementById("origin").value = "Ma position actuelle";
+        document.getElementById("mapCard").classList.add("is-guiding");
+        updateGuidanceButton(true);
+        updateUserMarker(point);
+        if (typeof document.getElementById("vehicleMotion").beginElement === "function") {
+          document.getElementById("vehicleMotion").beginElement();
+        }
+        watchId = navigator.geolocation.watchPosition(
+          handlePositionUpdate,
+          (error) => {
+            const message = error.code === 1
+              ? "Accès à la position refusé. Le guidage en direct est arrêté."
+              : "La position a été perdue. Vérifiez le signal ou arrêtez-vous dans un endroit sûr.";
+            setRouteStatus(message, true);
+            active = false;
+            watchId = null;
+            document.getElementById("mapCard").classList.remove("is-guiding");
+            updateGuidanceButton(false);
+          },
+          { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 }
+        );
+        if (localStorage.getItem("navigueVoiceEnabled") === "true") {
+          speakText(currentVoiceInstruction());
+        }
+        setRouteStatus("Guidage en direct activé. Gardez votre téléphone rangé et suivez les consignes vocales.");
+      } catch (error) {
+        active = false;
+        document.getElementById("mapCard").classList.remove("is-guiding");
+        updateGuidanceButton(false);
+        setRouteStatus(error.message, true);
+      }
+    });
+
+    document.getElementById("voiceButton").addEventListener("click", () => {
+      speakText(currentVoiceInstruction());
+    });
+
+    document.getElementById("assistantButton").addEventListener("click", () => {
+      const enabled = localStorage.getItem("navigueVoiceEnabled") !== "true";
+      localStorage.setItem("navigueVoiceEnabled", String(enabled));
+      document.getElementById("welcomeSetting").checked = enabled;
+      document.getElementById("assistantButton").textContent = enabled ? "Désactiver la voix" : "Activer la voix";
+      document.getElementById("assistantTitle").textContent = enabled ? "Votre assistant vocal est prêt." : "Bonjour, je suis NaVigue.";
+      document.getElementById("assistantMessage").textContent = enabled
+        ? "L’accueil vocal est activé pour vos prochaines visites. Touchez le haut-parleur pour entendre une consigne."
+        : "La voix est désactivée. Le micro ne sera demandé que si vous lancez la dictée.";
+      if (enabled) speakText(welcomeMessage());
+      else if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    });
+
+    document.getElementById("dictationButton").addEventListener("click", () => {
+      const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!Recognition) {
+        showToast("La dictée vocale n’est pas disponible dans ce navigateur. Vous pouvez saisir votre destination.");
+        return;
+      }
+      if (dictation) {
+        dictation.stop();
+        return;
+      }
+      dictation = new Recognition();
+      dictation.lang = localStorage.getItem("navigueLanguage") || "fr-FR";
+      dictation.interimResults = false;
+      dictation.maxAlternatives = 1;
+      dictation.onresult = (event) => {
+        const destination = event.results[0][0].transcript.trim();
+        document.getElementById("destination").value = destination;
+        document.getElementById("journeyForm").requestSubmit();
+      };
+      dictation.onerror = (event) => {
+        const message = event.error === "not-allowed"
+          ? "Accès au micro refusé. Autorisez-le dans les réglages du navigateur pour dicter."
+          : `La dictée vocale n’a pas fonctionné (${event.error}). Réessayez ou saisissez votre destination.`;
+        showToast(message);
+      };
+      dictation.onend = () => { dictation = undefined; };
+      showToast("Écoute en cours. Autorisez le micro si votre navigateur le demande.");
+      dictation.start();
+    });
+
+    document.getElementById("accessibilityToggle").addEventListener("click", (event) => {
+      const enabled = event.currentTarget.getAttribute("aria-checked") !== "true";
+      event.currentTarget.setAttribute("aria-checked", String(enabled));
+      document.getElementById("preferences").classList.toggle("expanded", enabled);
+      document.getElementById("accessibilityNote").classList.toggle("is-visible", enabled);
+      localStorage.setItem("navigueAccessibleRoute", String(enabled));
+      showToast(enabled ? "Profil mobilité activé. Vérifiez la présence réelle des passages et équipements." : "Profil mobilité désactivé.");
+    });
+
+    document.getElementById("preferencesButton").addEventListener("click", () => {
+      const dialog = document.getElementById("settingsDialog");
+      document.getElementById("welcomeSetting").checked = localStorage.getItem("navigueVoiceEnabled") === "true";
+      document.getElementById("languageSetting").value = localStorage.getItem("navigueLanguage") || "fr-FR";
+      document.getElementById("speechRate").value = localStorage.getItem("navigueSpeechRate") || "0.85";
+      document.getElementById("largeTextSetting").checked = localStorage.getItem("navigueLargeText") === "true";
+      document.getElementById("contrastSetting").checked = localStorage.getItem("navigueHighContrast") === "true";
+      if (typeof dialog.showModal === "function") dialog.showModal();
+      else showToast("Les préférences ne sont pas disponibles dans ce navigateur.");
+    });
+
+    document.getElementById("settingsForm").addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (event.submitter?.id !== "saveSettings") {
+        document.getElementById("settingsDialog").close();
+        return;
+      }
+      const voiceWasEnabled = localStorage.getItem("navigueVoiceEnabled") === "true";
+      const voiceEnabled = document.getElementById("welcomeSetting").checked;
+      localStorage.setItem("navigueVoiceEnabled", String(voiceEnabled));
+      localStorage.setItem("navigueLanguage", document.getElementById("languageSetting").value);
+      localStorage.setItem("navigueSpeechRate", document.getElementById("speechRate").value);
+      localStorage.setItem("navigueLargeText", String(document.getElementById("largeTextSetting").checked));
+      localStorage.setItem("navigueHighContrast", String(document.getElementById("contrastSetting").checked));
+      document.body.classList.toggle("large-text", document.getElementById("largeTextSetting").checked);
+      document.body.classList.toggle("high-contrast", document.getElementById("contrastSetting").checked);
+      document.getElementById("assistantButton").textContent = voiceEnabled ? "Désactiver la voix" : "Activer la voix";
+      document.getElementById("assistantTitle").textContent = voiceEnabled ? "Votre assistant vocal est prêt." : "Bonjour, je suis NaVigue.";
+      document.getElementById("assistantMessage").textContent = voiceEnabled
+        ? "L’accueil vocal est activé pour vos prochaines visites. Touchez le haut-parleur pour entendre une consigne."
+        : "La voix est désactivée. Le micro ne sera demandé que si vous lancez la dictée.";
+      document.getElementById("settingsDialog").close();
+      if (voiceEnabled && !voiceWasEnabled) speakText(welcomeMessage());
+      else if (!voiceEnabled && "speechSynthesis" in window) window.speechSynthesis.cancel();
+      showToast("Vos préférences ont été enregistrées sur cet appareil.");
+    });
+
+    document.getElementById("alternativeButton").addEventListener("click", (event) => {
+      if (activeRoute?.itineraries && activeRoute.itineraries.length > 1) {
+        activeRoute.itineraryIndex = (activeRoute.itineraryIndex + 1) % activeRoute.itineraries.length;
+        activeRoute.itinerary = activeRoute.itineraries[activeRoute.itineraryIndex];
+        renderTransitItinerary(activeRoute.itinerary);
+        document.getElementById("routeDuration").textContent = formatDuration(activeRoute.itinerary.duration);
+        document.getElementById("routeDistance").textContent = `${activeRoute.itinerary.transfers} correspondance${activeRoute.itinerary.transfers === 1 ? "" : "s"} · ${activeRoute.itineraries.length} options`;
+        document.getElementById("routeArrival").textContent = `Arrivée ${formatTransitTime(activeRoute.itinerary.endTime)}`;
+        event.currentTarget.textContent = activeRoute.itineraryIndex === 0 ? "Autre option" : "Itinéraire précédent";
+        setRouteStatus(`Option ${activeRoute.itineraryIndex + 1} sur ${activeRoute.itineraries.length} affichée.`);
+        return;
+      }
+      if (!activeRoute?.routes || activeRoute.routes.length < 2) {
+        event.currentTarget.disabled = true;
+        showToast("Aucun itinéraire alternatif n’a été fourni pour ce trajet.");
+        return;
+      }
+      activeRoute.routeIndex = (activeRoute.routeIndex + 1) % activeRoute.routes.length;
+      activeRoute.route = activeRoute.routes[activeRoute.routeIndex];
+      showRouteOption(activeRoute.route, activeRoute.origin, activeRoute.destination, activeRoute.mode);
+      event.currentTarget.textContent = activeRoute.routeIndex === 0 ? "Autre option" : "Itinéraire précédent";
+      showToast(`Option ${activeRoute.routeIndex + 1} sur ${activeRoute.routes.length} affichée.`);
+    });
+
+    document.getElementById("recenterButton").addEventListener("click", () => {
+      setRouteStatus("Demande de position en cours. Autorisez la localisation si votre navigateur le demande.");
+      getCurrentPosition({ maximumAge: 0 }).then((point) => {
+        currentCoordinates = point;
+        document.getElementById("origin").value = "Ma position actuelle";
+        updateUserMarker(point);
+        leafletMap?.setView([point.lat, point.lon], 17);
+        if (destinationCoordinates && selectedMode !== "transit") {
+          calculateRoute(point, destinationCoordinates, selectedMode)
+            .then(() => setRouteStatus("Position actualisée et itinéraire recalculé."))
+            .catch((error) => setRouteStatus(error.message, true));
+        } else {
+          setRouteStatus("Position obtenue. Entrez une destination pour calculer un trajet.");
+        }
+      }).catch((error) => setRouteStatus(error.message, true));
+    });
+    document.getElementById("orientationButton").addEventListener("click", () => showToast("Orientation fixe : le nord reste en haut pour vous repérer plus facilement."));
+    document.getElementById("languageButton").addEventListener("click", () => document.getElementById("preferencesButton").click());
+
+    function applyKidsMode(enabled, announce = true) {
+      if (enabled && !window.NavigueFamilyAuth?.activeChild) {
+        showToast("Un parent doit se connecter et choisir un profil enfant avant d’activer ce mode.");
+        return;
+      }
+      kidMode = enabled;
+      const childName = window.NavigueFamilyAuth?.activeChild?.child_name;
+      document.body.classList.toggle("kids-mode", enabled);
+      document.getElementById("kidsToggle").setAttribute("aria-pressed", String(enabled));
+      document.getElementById("kidsToggle").setAttribute("aria-label", enabled ? "Quitter le mode enfant" : "Choisir un profil enfant");
+      document.getElementById("kidsToggle").textContent = enabled ? `Mode enfant : ${childName}` : "Mode enfant";
+      document.getElementById("familySafetyNote").classList.toggle("is-visible", enabled);
+      document.getElementById("childDestinations").classList.toggle("is-visible", enabled);
+      document.getElementById("pageTitle").textContent = enabled ? `On part à l’aventure${childName ? `, ${childName}` : ""} ?` : "On y va ensemble\u00a0?";
+      document.querySelector(".intro > div > p:last-child").textContent = enabled
+        ? "Choisis une destination avec un adulte : NaVigue vous montre le chemin."
+        : "Une destination, des explications claires. NaVigue s’occupe du chemin.";
+      document.querySelector(".journey-form .form-head h2").textContent = enabled ? "Où veux-tu aller ?" : "Où souhaitez-vous aller\u00a0?";
+      document.querySelector(".journey-form .simple-label").textContent = enabled ? "Un adulte peut t’aider à choisir." : "Vous pourrez changer d’avis en chemin.";
+      document.querySelector('label[for="origin"]').textContent = enabled ? "DÉPART" : "JE PARS DE";
+      document.querySelector('label[for="destination"]').textContent = enabled ? "DESTINATION" : "JE VAIS À";
+      document.querySelector("#journeyForm .form-grid .primary").lastChild.textContent = enabled ? " Montre-moi le chemin" : " Trouver mon chemin";
+      document.getElementById("assistantTitle").textContent = enabled ? "Salut ! Je suis NaVigue." : "Bonjour, je suis NaVigue.";
+      document.getElementById("assistantMessage").textContent = enabled
+        ? "Demande à un adulte de t’accompagner et d’autoriser la position avant de commencer."
+        : "Touchez « Activer la voix » pour entendre mon accueil. Micro et position ne sont demandés que lorsque vous les utilisez.";
+      document.getElementById("routeTitle").textContent = enabled ? "Ton chemin, étape par étape" : "Votre chemin, pas à pas";
+      document.getElementById("startButton").lastChild.textContent = enabled ? " Suivre mon trajet" : " Démarrer le guidage";
+      if (enabled && (selectedMode === "car" || selectedMode === "taxi")) {
+        updateMode("walk", document.querySelector('.mode[data-mode="walk"]'));
+      }
+      localStorage.setItem("navigueKidMode", String(enabled));
+      window.NavigueFamilyAuth && (window.NavigueFamilyAuth.kidMode = enabled);
+      if (announce) showToast(enabled ? "Mode enfant activé. Utilise NaVigue avec un adulte." : "Mode enfant désactivé.");
+    }
+
+    document.getElementById("kidsToggle").addEventListener("click", () => {
+      if (!window.NavigueFamilyAuth?.activeChild) {
+        document.getElementById("accountDialog").showModal();
+        document.getElementById("accountButton").focus();
+        return;
+      }
+      applyKidsMode(!kidMode);
+    });
+
+    let deferredInstallPrompt = null;
+    const installDialog = document.getElementById("installDialog");
+    const installInstructions = document.getElementById("installInstructions");
+    const confirmInstallButton = document.getElementById("confirmInstallButton");
+    window.addEventListener("beforeinstallprompt", (event) => {
+      event.preventDefault();
+      deferredInstallPrompt = event;
+      confirmInstallButton.hidden = false;
+    });
+    window.addEventListener("appinstalled", () => {
+      deferredInstallPrompt = null;
+      document.getElementById("installButton").hidden = true;
+      showToast("NaVigue a été ajoutée à votre appareil.");
+    });
+    function openInstallHelp() {
+      const userAgent = navigator.userAgent;
+      installInstructions.textContent = /iPhone|iPad|iPod/i.test(userAgent)
+        ? "Dans Safari, touchez Partager, puis « Sur l’écran d’accueil » et « Ajouter ». Le site doit être hébergé en HTTPS."
+        : /Android/i.test(userAgent)
+          ? "Dans Chrome, ouvrez le menu ⋮ puis choisissez « Installer l’application » ou « Ajouter à l’écran d’accueil ». Le site doit être hébergé en HTTPS."
+          : "Dans Chrome ou Edge, utilisez l’icône Installer dans la barre d’adresse ou le menu du navigateur. Le site doit être hébergé en HTTPS.";
+      if (typeof installDialog.showModal === "function") installDialog.showModal();
+      else showToast(installInstructions.textContent);
+    }
+    document.getElementById("installButton").addEventListener("click", async () => {
+      if (!deferredInstallPrompt) {
+        openInstallHelp();
+        return;
+      }
+      deferredInstallPrompt.prompt();
+      const result = await deferredInstallPrompt.userChoice;
+      if (result.outcome === "accepted") showToast("Installation de NaVigue lancée.");
+      deferredInstallPrompt = null;
+      confirmInstallButton.hidden = true;
+    });
+    confirmInstallButton.addEventListener("click", async () => {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      const result = await deferredInstallPrompt.userChoice;
+      if (result.outcome === "accepted") showToast("Installation de NaVigue lancée.");
+      deferredInstallPrompt = null;
+      confirmInstallButton.hidden = true;
+      installDialog.close();
+    });
+    document.getElementById("closeInstallDialog").addEventListener("click", () => installDialog.close());
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./service-worker.js")
+        .catch((error) => {
+          console.error("Impossible d’enregistrer le service worker de NaVigue.", error);
+          showToast("L’installation hors connexion partielle n’est pas disponible sur cette adresse. Hébergez NaVigue en HTTPS.");
+        });
+    }
+    if (window.matchMedia("(display-mode: standalone)").matches || navigator.standalone) {
+      document.getElementById("installButton").hidden = true;
+    }
+
+    const savedAccessibleRoute = localStorage.getItem("navigueAccessibleRoute") === "true";
+    document.getElementById("accessibilityToggle").setAttribute("aria-checked", String(savedAccessibleRoute));
+    document.getElementById("preferences").classList.toggle("expanded", savedAccessibleRoute);
+    document.body.classList.toggle("large-text", localStorage.getItem("navigueLargeText") === "true");
+    document.body.classList.toggle("high-contrast", localStorage.getItem("navigueHighContrast") === "true");
+    if (localStorage.getItem("navigueVoiceEnabled") === "true") {
+      document.getElementById("assistantButton").textContent = "Désactiver la voix";
+      document.getElementById("assistantTitle").textContent = "Votre assistant vocal est prêt.";
+      document.getElementById("assistantMessage").textContent = "L’accueil vocal est activé. Selon les règles du navigateur, vous devrez peut-être toucher la page avant d’entendre la voix.";
+      speakText(welcomeMessage());
+    }
+    applyKidsMode(false, false);
+  </script>
+  <script src="./family-auth.js?v=2"></script>
+</body>
+</html>

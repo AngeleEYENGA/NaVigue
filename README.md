@@ -1,2 +1,32 @@
 # NaVigue
-GPS assez simple d'utilisation pour les enfants et les adultes ayant du mal avec les GPS classiques, assistant vocal intégré
+
+NaVigue est une application web de navigation pensée pour les enfants et les adultes qui souhaitent des itinéraires faciles à comprendre, des consignes vocales et une interface accessible.
+
+## Développement local
+
+Ouvrez `start-navigue.bat` sous Windows. Il lance un serveur HTTP local et ouvre NaVigue dans le navigateur. Les cartes, la géolocalisation et les itinéraires nécessitent une connexion Internet.
+
+## Publication automatique sur Vercel
+
+1. Dans Vercel, choisissez **Add New → Project**, importez `AngeleEYENGA/NaVigue` depuis GitHub et choisissez **Other** comme framework.
+2. Aucun build n’est nécessaire : laissez la commande de build vide et configurez le dossier racine (`.`) comme dossier de sortie.
+3. Vercel fournit une adresse `https://<nom-du-projet>.vercel.app`. Choisissez un nom de projet disponible, puis relevez le domaine de production affiché dans **Settings → Domains**.
+4. Chaque push sur la branche `main` déclenchera automatiquement un nouveau déploiement.
+5. Pour l’authentification Supabase, définissez le domaine de production comme **Site URL**. Ajoutez l’URL complète de NaVigue (par exemple `https://<nom-du-projet>.vercel.app/`) aux **Redirect URLs** Supabase et l’origine seule (sans chemin) aux origines JavaScript autorisées chez Google.
+
+Le callback OAuth Google/Microsoft reste l’URL du projet Supabase et non le domaine Vercel. Il est indiqué dans [DEPLOYMENT.md](./DEPLOYMENT.md).
+
+## Espace famille et configuration Supabase
+
+- `supabase-config.js` contient uniquement le Project URL et la clé publique `anon`/`publishable`. Cette clé sera visible dans le dépôt public et dans le navigateur ; elle n’est pas une clé secrète. Ne mettez jamais une clé `service_role`, `secret` ou un secret client OAuth dans ce dépôt.
+- Exécutez [supabase-schema.sql](./supabase-schema.sql) dans l’éditeur SQL Supabase avant d’utiliser les profils enfant et les favoris.
+- Configurez les fournisseurs Google, Microsoft/Azure et e-mail ainsi que les URL de redirection selon [DEPLOYMENT.md](./DEPLOYMENT.md).
+- Les tables des profils et favoris doivent conserver leurs règles Row Level Security (RLS). Les itinéraires et cartes nécessitent une connexion Internet.
+
+## Fonctionnalités
+
+- Calcul d’itinéraires piéton, vélo, voiture et transports en commun.
+- Consignes étape par étape et assistance vocale.
+- Vues carte, perspective et rue, selon la couverture des services cartographiques.
+- Mode enfant avec profils gérés par un parent et adresses favorites préparées à l’avance.
+- Application web installable (PWA) sur les navigateurs compatibles.
