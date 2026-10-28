@@ -387,7 +387,7 @@
     .discover-icon svg { width: 18px; height: 18px; }
     .discover-heading h2 { margin: 0; font-size: 13px; }
     .discover-heading p { color: var(--muted); margin: 3px 0 0; font-size: 10px; }
-    .discover-items { display: flex; gap: 8px; overflow: auto; }
+    .discover-items { min-width: 0; display: flex; gap: 8px; overflow: auto; }
     .discover-filters { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
     .discover-filter { border: 1px solid var(--line); border-radius: 99px; padding: 5px 8px; background: white; color: var(--muted); font-size: 10px; cursor: pointer; }
     .discover-filter[aria-pressed="true"] { border-color: var(--forest); background: #eef5eb; color: var(--forest); font-weight: 700; }
@@ -544,7 +544,7 @@
       </a>
       <div class="header-right">
         <div class="display-controls">
-          <select id="quickLanguage" aria-label="Langue"><option value="fr-FR">Français</option><option value="de-DE">Deutsch</option><option value="zh-CN">中文（简体）</option></select>
+          <select id="quickLanguage" aria-label="Langue"><option value="fr-FR">Français</option><option value="en-US">English</option><option value="es-ES">Español</option><option value="de-DE">Deutsch</option><option value="zh-CN">中文（简体）</option></select>
           <select id="quickTheme" aria-label="Apparence"><option value="system">Selon l’appareil</option><option value="light">Clair</option><option value="dark">Sombre</option></select>
         </div>
         <span class="header-note">La navigation, simplement.</span>
@@ -863,6 +863,10 @@
                   <button class="discover-filter" data-filter="park" aria-pressed="false">Parcs</button>
                   <button class="discover-filter" data-filter="food" aria-pressed="false">Manger</button>
                   <button class="discover-filter" data-filter="culture" aria-pressed="false">Culture</button>
+                  <button class="discover-filter" data-filter="hotel" aria-pressed="false">Hôtels</button>
+                  <button class="discover-filter" data-filter="motel" aria-pressed="false">Motels</button>
+                  <button class="discover-filter" data-filter="bowling" aria-pressed="false">Bowling</button>
+                  <button class="discover-filter" data-filter="activities" aria-pressed="false">Activités</button>
                 </div>
               </div>
             </div>
@@ -1023,6 +1027,7 @@
     let conversationRecognition;
     let conversationWaitingForSpeech = false;
     let conversationAwaitingDestination = false;
+    let pendingConversationDestination = "";
     let conversationRestartTimer;
     let stopConversationAfterReply = false;
     const geocodeCache = new Map();
@@ -1539,31 +1544,34 @@
       if (!center) return;
       const generation = ++nearbyPlacesGeneration;
       const categories = {
-        park: { query: "park", tag: "leisure:park", label: "Parcs", accepted: new Set(["park", "garden", "nature_reserve", "recreation_ground"]) },
-        food: { query: "restaurant", tag: "amenity:restaurant", label: "Restaurants", accepted: new Set(["restaurant", "cafe", "fast_food", "food_court", "pub", "bar", "bakery"]) },
-        culture: { query: "museum", tag: "tourism:museum", label: "Culture", accepted: new Set(["museum", "gallery", "arts_centre", "attraction", "theatre", "monument"]) }
+        park: { tags: ['leisure:park', 'leisure:garden', 'leisure:nature_reserve', 'leisure:recreation_ground'], label: uiText('parks') },
+        food: { tags: ['amenity:restaurant', 'amenity:cafe', 'amenity:fast_food', 'amenity:food_court', 'amenity:pub', 'amenity:bar', 'shop:bakery'], label: uiText('food') },
+        culture: { tags: ['tourism:museum', 'tourism:gallery', 'amenity:arts_centre', 'amenity:theatre', 'historic:monument'], label: uiText('culture') },
+        hotel: { tags: ['tourism:hotel', 'tourism:hostel', 'tourism:guest_house', 'tourism:apartment'], label: uiText('hotels') },
+        motel: { tags: ['tourism:motel'], label: uiText('motels') },
+        bowling: { tags: ['leisure:bowling_alley'], label: uiText('bowling') },
+        activities: { tags: ['leisure:sports_centre', 'leisure:swimming_pool', 'leisure:water_park', 'leisure:miniature_golf', 'leisure:escape_game', 'leisure:amusement_arcade', 'amenity:cinema', 'tourism:theme_park', 'tourism:zoo', 'tourism:attraction'], label: uiText('activities') }
       };
       const categoriesToLoad = category === "all" ? Object.keys(categories) : [category];
       const itemLayer = document.getElementById("discoverItems");
       const filterButtons = document.querySelectorAll(".discover-filter[data-filter]");
-      if (category !== "all") filterButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.filter === category)));
+      filterButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.filter === category)));
       itemLayer.replaceChildren();
       itemLayer.dataset.loaded = "true";
+      let failedCategories = 0;
+      if (poiLayer) poiLayer.clearLayers();
       for (const key of categoriesToLoad) {
         const config = categories[key];
-        const latDelta = 0.045;
-        const lonDelta = latDelta / Math.max(0.25, Math.cos(center.lat * Math.PI / 180));
-        const bounds = [center.lon - lonDelta, center.lat - latDelta, center.lon + lonDelta, center.lat + latDelta].join(",");
-        const params = new URLSearchParams({
-          q: config.query,
-          lat: String(center.lat),
-          lon: String(center.lon),
-          bbox: bounds,
-          osm_tag: config.tag,
-          limit: "25",
-          lang: "fr"
-        });
-        const result = await requestJson(`https://photon.komoot.io/api/?${params}`, `La recherche de lieux « ${config.label} »`);
+        const params = new URLSearchParams({ lat: String(center.lat), lon: String(center.lon), radius: '5', limit: '40', lang: uiLanguage().slice(0, 2) });
+        config.tags.forEach((tag) => params.append('osm_tag', tag));
+        let result;
+        try {
+          result = await requestJson(`https://photon.komoot.io/reverse?${params}`, `La recherche de lieux « ${config.label} »`);
+        } catch (error) {
+          if (generation !== nearbyPlacesGeneration) return;
+          failedCategories++;
+          continue;
+        }
         if (generation !== nearbyPlacesGeneration) return;
         const places = (result.features || []).map((feature) => {
           const properties = feature.properties || {};
@@ -1576,7 +1584,7 @@
             address: [properties.street, properties.city || properties.town || properties.village].filter(Boolean).join(", "),
             distance: distanceBetween(center, { lat, lon })
           };
-        }).filter((place) => Number.isFinite(place.lat) && Number.isFinite(place.lon) && place.distance <= 5000 && config.accepted.has(place.type))
+        }).filter((place) => Number.isFinite(place.lat) && Number.isFinite(place.lon) && place.distance <= 5000 && config.tags.includes(`${place.key}:${place.type}`))
           .sort((a, b) => a.distance - b.distance).slice(0, 8);
         places.forEach((place) => {
           const article = document.createElement("article");
@@ -1599,7 +1607,7 @@
           }
           const goButton = document.createElement("button");
           goButton.type = "button";
-          goButton.textContent = "Y aller";
+          goButton.textContent = uiText("goThere");
           goButton.addEventListener("click", () => {
             document.getElementById("destination").value = place.address ? `${place.name}, ${place.address}` : place.name;
             destinationCoordinates = { lat: place.lat, lon: place.lon, name: place.name };
@@ -1613,9 +1621,14 @@
           }
         });
       }
+      if (failedCategories && itemLayer.children.length) {
+        const notice = document.createElement('span');
+        notice.textContent = uiText('nearbyPartial');
+        itemLayer.append(notice);
+      }
       if (!itemLayer.children.length) {
         const message = document.createElement("span");
-        message.textContent = "Aucun lieu proche trouvé dans les données cartographiques.";
+        message.textContent = failedCategories ? uiText("nearbyUnavailable") : uiText("nearbyNone");
         itemLayer.append(message);
       }
     }
@@ -1809,6 +1822,46 @@
         kidRouteTitle: "一步一步跟我走", kidStart: "开始我的路线"
       }
     };
+    UI_COPY['en-US'] = {
+      tagline: 'Navigation made simple.', kids: 'Child mode', install: 'Install', account: 'Adult account', accountSignedIn: 'My account',
+      welcome: 'Your travel companion', title: 'Shall we go together?', description: 'One destination, clear directions. NaVigue takes care of the way.',
+      safe: 'Directions at your own pace', formTitle: 'Where would you like to go?', formHint: 'You can change your mind along the way.',
+      origin: 'FROM', destination: 'TO', destinationPlaceholder: 'An address or a place', find: 'Find my way',
+      assistantTitle: 'Hello, I’m NaVigue.', assistantMessage: 'Tap “Talk to NaVigue” to chat by voice. The microphone only starts at your request; speech recognition depends on your browser.',
+      voiceOn: 'Enable voice', voiceOff: 'Disable voice', conversation: 'Talk to NaVigue', stopConversation: 'End conversation', dictation: 'Dictate a destination',
+      routeTitle: 'Your journey, step by step', alternative: 'Another option', walk: 'Walking', bike: 'Cycling', transit: 'Bus, metro & train', car: 'Driving', taxi: 'Taxi / ride-hailing',
+      distance: 'Calculate a route', arrival: 'Waiting', stepStart: 'Enter your start and destination', stepDescription: 'NaVigue will calculate your directions.', start: 'Start navigation', repeat: 'Read the next direction aloud',
+      accessible: 'Accessible route', obstacles: 'Avoid stairs and obstacles', personalize: 'Personalize', mapDestination: 'Your route will appear here', mapDescription: 'OpenStreetMap map', plan: 'Map', view3d: '3D view', street: 'Street view',
+      discover: 'Discover along the way', discoverDescription: 'Places near your destination, from OpenStreetMap.', all: 'All', parks: 'Parks', food: 'Food', culture: 'Culture', nearbyEmpty: 'Calculate a route first to find places nearby.',
+      preferences: 'Appearance, language & accessibility', settingsTitle: 'My preferences', settingsDescription: 'NaVigue adapts to the way you travel.', welcomeSetting: 'Voice welcome', welcomeHint: 'Play a welcome message at the next start.',
+      language: 'App and voice language', languageHint: 'Translates the main controls and sets the language for speech and dictation.', theme: 'Appearance', themeHint: 'Choose light, dark or your device setting.', system: 'Follow device', light: 'Light', dark: 'Dark',
+      speechRate: 'Speech rate', speechRateHint: 'Slow down to follow directions more easily.', largeText: 'Larger text', largeTextHint: 'Enlarges directions and useful text.', contrast: 'High contrast', contrastHint: 'Increases contrast for easier reading.',
+      footnote: 'The microphone and location stay off until you start dictation or request your location.', saveSettings: 'Save my preferences', kidTitle: 'Let’s go on an adventure', kidDescription: 'Choose a destination with an adult. NaVigue will show you the way.',
+      kidFormTitle: 'Where do you want to go?', kidHint: 'An adult can help you choose.', kidFind: 'Show me the way', kidAssistantTitle: 'Hi! I’m NaVigue.', kidAssistantMessage: 'Ask an adult to come with you and allow location access before starting.', kidRouteTitle: 'Your journey, step by step', kidStart: 'Follow my route'
+    };
+    UI_COPY['es-ES'] = {
+      tagline: 'Navegar, así de fácil.', kids: 'Modo infantil', install: 'Instalar', account: 'Cuenta de adulto', accountSignedIn: 'Mi cuenta',
+      welcome: 'Tu compañero de viaje', title: '¿Vamos juntos?', description: 'Un destino, indicaciones claras. NaVigue se encarga del camino.', safe: 'Indicaciones a tu ritmo', formTitle: '¿Adónde quieres ir?', formHint: 'Puedes cambiar de idea por el camino.',
+      origin: 'SALGO DE', destination: 'VOY A', destinationPlaceholder: 'Una dirección o un lugar', find: 'Encontrar mi camino',
+      assistantTitle: 'Hola, soy NaVigue.', assistantMessage: 'Pulsa «Hablar con NaVigue» para conversar por voz. El micrófono solo se activa cuando lo solicitas; el reconocimiento depende del navegador.',
+      voiceOn: 'Activar la voz', voiceOff: 'Desactivar la voz', conversation: 'Hablar con NaVigue', stopConversation: 'Terminar la conversación', dictation: 'Dictar un destino',
+      routeTitle: 'Tu camino, paso a paso', alternative: 'Otra opción', walk: 'A pie', bike: 'Bicicleta', transit: 'Autobús, metro y tren', car: 'Coche', taxi: 'Taxi / VTC', distance: 'Calcula una ruta', arrival: 'En espera',
+      stepStart: 'Introduce el origen y el destino', stepDescription: 'NaVigue calculará las indicaciones.', start: 'Iniciar navegación', repeat: 'Leer la siguiente indicación', accessible: 'Ruta accesible', obstacles: 'Evitar escaleras y obstáculos', personalize: 'Personalizar',
+      mapDestination: 'Tu ruta aparecerá aquí', mapDescription: 'Mapa de OpenStreetMap', plan: 'Mapa', view3d: 'Vista 3D', street: 'Vista de calle', discover: 'Descubre por el camino', discoverDescription: 'Lugares cerca de tu destino, desde OpenStreetMap.', all: 'Todo', parks: 'Parques', food: 'Comer', culture: 'Cultura', nearbyEmpty: 'Calcula una ruta para encontrar lugares cercanos.',
+      preferences: 'Apariencia, idioma y accesibilidad', settingsTitle: 'Mis preferencias', settingsDescription: 'NaVigue se adapta a tu forma de viajar.', welcomeSetting: 'Bienvenida por voz', welcomeHint: 'Reproducir una bienvenida al iniciar de nuevo.', language: 'Idioma de la aplicación y de la voz', languageHint: 'Traduce los controles principales y elige el idioma de la voz y del dictado.',
+      theme: 'Apariencia', themeHint: 'Elige el tema claro, oscuro o el del dispositivo.', system: 'Según el dispositivo', light: 'Claro', dark: 'Oscuro', speechRate: 'Velocidad de voz', speechRateHint: 'Más despacio para seguir mejor las indicaciones.', largeText: 'Texto ampliado', largeTextHint: 'Amplía las indicaciones y los textos útiles.', contrast: 'Contraste alto', contrastHint: 'Aumenta el contraste para facilitar la lectura.',
+      footnote: 'El micrófono y la ubicación permanecen desactivados hasta que inicies el dictado o solicites tu ubicación.', saveSettings: 'Guardar mis preferencias', kidTitle: 'Vamos de aventura', kidDescription: 'Elige un destino con un adulto. NaVigue os muestra el camino.', kidFormTitle: '¿Adónde quieres ir?', kidHint: 'Un adulto puede ayudarte a elegir.', kidFind: 'Muéstrame el camino', kidAssistantTitle: '¡Hola! Soy NaVigue.', kidAssistantMessage: 'Pide a un adulto que te acompañe y permita la ubicación antes de empezar.', kidRouteTitle: 'Tu camino, paso a paso', kidStart: 'Seguir mi ruta'
+    };
+    const DISCOVERY_COPY = {
+      'fr-FR': ['Hôtels', 'Motels', 'Bowling', 'Activités', 'Y aller', 'Aucun lieu proche trouvé dans les données cartographiques.', 'La recherche de lieux est temporairement indisponible. Réessayez.', 'Certains types de lieux sont indisponibles. Vous pouvez réessayer leur filtre.'],
+      'en-US': ['Hotels', 'Motels', 'Bowling', 'Activities', 'Go there', 'No nearby places found in the map data.', 'Place search is temporarily unavailable. Please try again.', 'Some categories are unavailable. Try their filter again.'],
+      'es-ES': ['Hoteles', 'Moteles', 'Bolos', 'Actividades', 'Ir allí', 'No se encontraron lugares cercanos en el mapa.', 'La búsqueda no está disponible temporalmente. Inténtalo de nuevo.', 'Algunas categorías no están disponibles. Prueba de nuevo su filtro.'],
+      'de-DE': ['Hotels', 'Motels', 'Bowling', 'Aktivitäten', 'Dorthin', 'Keine Orte in der Nähe gefunden.', 'Die Ortssuche ist vorübergehend nicht verfügbar. Bitte erneut versuchen.', 'Einige Kategorien sind nicht verfügbar. Versuche ihren Filter erneut.'],
+      'zh-CN': ['酒店', '汽车旅馆', '保龄球', '休闲活动', '去这里', '地图数据中未找到附近地点。', '地点搜索暂时不可用，请重试。', '部分分类暂时不可用，请重新选择相应分类。']
+    };
+    for (const [language, values] of Object.entries(DISCOVERY_COPY)) {
+      ['hotels', 'motels', 'bowling', 'activities', 'goThere', 'nearbyNone', 'nearbyUnavailable', 'nearbyPartial'].forEach((key, i) => UI_COPY[language][key] = values[i]);
+    }
     const uiLanguage = () => localStorage.getItem("navigueLanguage") || "fr-FR";
     const uiText = (key) => UI_COPY[uiLanguage()]?.[key] || UI_COPY["fr-FR"][key];
 
@@ -1820,8 +1873,8 @@
 
     function applyLanguageUI(language = uiLanguage()) {
       const words = UI_COPY[language] || UI_COPY["fr-FR"];
-      document.documentElement.lang = language.slice(0, 2);
-      document.title = language === "de-DE"
+      document.documentElement.lang = language === "zh-CN" ? "zh-CN" : language.slice(0, 2);
+      document.title = language === "en-US" ? "NaVigue — Your way, at your own pace" : language === "es-ES" ? "NaVigue — Tu camino, a tu ritmo" : language === "de-DE"
         ? "NaVigue — Dein Weg, in deinem Tempo"
         : language === "zh-CN" ? "NaVigue — 按照你的节奏，带你前行" : "NaVigue — Tous les chemins, à votre rythme";
       const childName = window.NavigueFamilyAuth?.activeChild?.child_name;
@@ -1831,16 +1884,16 @@
       setButtonText(document.getElementById("installButton"), words.install);
       setButtonText(document.getElementById("accountButton"), signedIn ? words.accountSignedIn : words.account);
       document.getElementById("accountButton").setAttribute("aria-label", signedIn ? words.accountSignedIn : words.account);
-      document.getElementById("languageButton").setAttribute("aria-label", language === "de-DE" ? "Sprache auswählen"
+      document.getElementById("languageButton").setAttribute("aria-label", language === "en-US" ? "Choose language" : language === "es-ES" ? "Elegir idioma" : language === "de-DE" ? "Sprache auswählen"
         : language === "zh-CN" ? "选择语言" : "Choisir la langue");
       document.getElementById("languageButton").title = `Language: ${language}`;
       document.getElementById("welcomeLine").textContent = window.NavigueFamilyAuth?.displayName
-        ? (language === "de-DE" ? `Willkommen, ${window.NavigueFamilyAuth.displayName}!`
+        ? (language === "en-US" ? `Welcome, ${window.NavigueFamilyAuth.displayName}!` : language === "es-ES" ? `¡Bienvenido, ${window.NavigueFamilyAuth.displayName}!` : language === "de-DE" ? `Willkommen, ${window.NavigueFamilyAuth.displayName}!`
           : language === "zh-CN" ? `欢迎，${window.NavigueFamilyAuth.displayName}！`
             : `Bienvenue, ${window.NavigueFamilyAuth.displayName} !`)
         : words.welcome;
       document.getElementById("pageTitle").textContent = kidMode
-        ? (language === "de-DE" ? `Los geht das Abenteuer${childName ? `, ${childName}` : ""}!`
+        ? (language === "en-US" ? `Let’s go on an adventure${childName ? `, ${childName}` : ""}!` : language === "es-ES" ? `¡Vamos de aventura${childName ? `, ${childName}` : ""}!` : language === "de-DE" ? `Los geht das Abenteuer${childName ? `, ${childName}` : ""}!`
           : language === "zh-CN" ? `一起开启冒险${childName ? `，${childName}` : ""}吧！`
             : `${words.kidTitle}${childName ? `, ${childName}` : ""} ?`)
         : words.title;
@@ -1852,8 +1905,8 @@
       document.querySelector('label[for="destination"]').textContent = words.destination;
       document.getElementById("destination").placeholder = words.destinationPlaceholder;
       const originInput = document.getElementById("origin");
-      if (["Ma position", "My location", "Mein Standort", "我的位置"].includes(originInput.value)) {
-        originInput.value = language === "de-DE" ? "Mein Standort" : language === "zh-CN" ? "我的位置" : "Ma position";
+      if (["Ma position", "My location", "Mi ubicación", "Mein Standort", "我的位置"].includes(originInput.value)) {
+        originInput.value = language === "en-US" ? "My location" : language === "es-ES" ? "Mi ubicación" : language === "de-DE" ? "Mein Standort" : language === "zh-CN" ? "我的位置" : "Ma position";
       }
       setButtonText(document.querySelector("#journeyForm .form-grid .primary"), kidMode ? words.kidFind : words.find);
       document.getElementById("assistantTitle").textContent = kidMode ? words.kidAssistantTitle : words.assistantTitle;
@@ -1868,18 +1921,14 @@
         const button = document.querySelector(`.mode[data-mode="${mode}"]`);
         if (button) setButtonText(button, words[key]);
       }
-      if (document.getElementById("routeDistance").textContent === UI_COPY["fr-FR"].distance
-        || document.getElementById("routeDistance").textContent === UI_COPY["de-DE"].distance
-        || document.getElementById("routeDistance").textContent === UI_COPY["zh-CN"].distance) {
+      if (Object.values(UI_COPY).some((copy) => copy.distance === document.getElementById("routeDistance").textContent)) {
         document.getElementById("routeDistance").textContent = words.distance;
       }
-      if (document.getElementById("routeArrival").textContent === "En attente"
-        || document.getElementById("routeArrival").textContent === UI_COPY["de-DE"].arrival
-        || document.getElementById("routeArrival").textContent === UI_COPY["zh-CN"].arrival) {
+      if (Object.values(UI_COPY).some((copy) => copy.arrival === document.getElementById("routeArrival").textContent)) {
         document.getElementById("routeArrival").textContent = words.arrival;
       }
       const firstStep = document.querySelector("#stepList .step");
-      if (firstStep) {
+      if (firstStep && !destinationCoordinates) {
         firstStep.querySelector("strong").textContent = words.stepStart;
         firstStep.querySelector("small").textContent = words.stepDescription;
       }
@@ -1897,14 +1946,14 @@
       document.querySelector('.view-button[data-view="street"]').textContent = words.street;
       document.querySelector(".discover-heading h2").textContent = words.discover;
       document.querySelector(".discover-heading p").textContent = words.discoverDescription;
-      for (const [filter, key] of [["all", "all"], ["park", "parks"], ["food", "food"], ["culture", "culture"]]) {
+      for (const [filter, key] of [["all", "all"], ["park", "parks"], ["food", "food"], ["culture", "culture"], ["hotel", "hotels"], ["motel", "motels"], ["bowling", "bowling"], ["activities", "activities"]]) {
         const button = document.querySelector(`.discover-filter[data-filter="${filter}"]`);
         if (button) button.textContent = words[key];
       }
       const emptyPlaces = document.querySelector("#discoverItems > span");
-      if (emptyPlaces) emptyPlaces.textContent = words.nearbyEmpty;
+      if (emptyPlaces && !destinationCoordinates) emptyPlaces.textContent = words.nearbyEmpty;
 
-      document.querySelector('.hero-caption').textContent = language === 'de-DE' ? 'Schritt für Schritt kommen wir an.' : language === 'zh-CN' ? '一步一步，安心到达。' : 'Un pas après l’autre, on y arrive.';
+      document.querySelector('.hero-caption').textContent = language === 'en-US' ? 'One step at a time, we’ll get there.' : language === 'es-ES' ? 'Paso a paso, llegaremos.' : language === 'de-DE' ? 'Schritt für Schritt kommen wir an.' : language === 'zh-CN' ? '一步一步，安心到达。' : 'Un pas après l’autre, on y arrive.';
       document.getElementById('quickLanguage').value = language;
       document.getElementById('quickLanguage').setAttribute('aria-label', words.language);
       document.getElementById('quickTheme').setAttribute('aria-label', words.theme);
@@ -1922,6 +1971,10 @@
       document.querySelector('label[for="speechRate"]').textContent = words.speechRate;
       document.querySelector('label[for="largeTextSetting"]').textContent = words.largeText;
       document.querySelector('label[for="contrastSetting"]').textContent = words.contrast;
+      for (const [id, key] of [['welcomeSetting', 'welcomeHint'], ['speechRate', 'speechRateHint'], ['largeTextSetting', 'largeTextHint'], ['contrastSetting', 'contrastHint']]) {
+        const hint = document.querySelector(`label[for="${id}"]`)?.parentElement.querySelector('small');
+        if (hint) hint.textContent = words[key];
+      }
       document.getElementById("settingsFootnote").textContent = words.footnote;
       document.getElementById("saveSettings").textContent = words.saveSettings;
     }
@@ -1968,6 +2021,7 @@
     }
 
     function stopConversation() {
+      pendingConversationDestination = "";
       activeConversation = false;
       conversationWaitingForSpeech = false;
       conversationAwaitingDestination = false;
@@ -1988,73 +2042,75 @@
       document.getElementById("conversationButton").textContent = uiText("conversation");
     }
 
+    const CONVERSATION_COPY = {
+      'fr-FR': { greeting: 'Bonjour ! Je suis là avec toi. Où aimerais-tu aller ?', help: 'Dis par exemple « je veux aller au Louvre ». Si tu donnes seulement un lieu, je te demanderai confirmation.', clarify: 'Je n’ai pas identifié une demande de trajet. Dis « je veux aller à » suivi du lieu, ou demande-moi de répéter une consigne.', confirm: (place) => `Tu veux aller à ${place} ? Dis oui pour chercher le trajet, ou non pour annuler.`, cancel: 'D’accord, je ne lance pas de trajet. Où aimerais-tu aller ?', thanks: 'Avec plaisir ! Je suis là si tu as besoin.', stop: 'D’accord, j’arrête de t’écouter. Tu peux me reparler quand tu veux.', route: (place) => `D’accord, je prépare le trajet vers ${place}.` },
+      'en-US': { greeting: 'Hello! I’m here with you. Where would you like to go?', help: 'Say “take me to the Louvre”, for example. If you only name a place, I will ask you to confirm.', clarify: 'I did not identify a route request. Say “take me to” followed by a place, or ask me to repeat a direction.', confirm: (place) => `Would you like to go to ${place}? Say yes to find a route, or no to cancel.`, cancel: 'Okay, I won’t start a route. Where would you like to go?', thanks: 'You’re welcome! I’m here if you need me.', stop: 'Okay, I’ll stop listening. You can talk to me again whenever you like.', route: (place) => `Okay, I’m planning your route to ${place}.` },
+      'es-ES': { greeting: '¡Hola! Estoy aquí contigo. ¿Adónde quieres ir?', help: 'Di, por ejemplo, «quiero ir al Louvre». Si solo dices un lugar, te pediré confirmación.', clarify: 'No he identificado una petición de ruta. Di «quiero ir a» seguido del lugar, o pídeme que repita una indicación.', confirm: (place) => `¿Quieres ir a ${place}? Di sí para buscar la ruta o no para cancelar.`, cancel: 'De acuerdo, no iniciaré una ruta. ¿Adónde quieres ir?', thanks: '¡De nada! Estoy aquí si me necesitas.', stop: 'De acuerdo, dejo de escuchar. Puedes volver a hablarme cuando quieras.', route: (place) => `De acuerdo, preparo la ruta hacia ${place}.` },
+      'de-DE': { greeting: 'Hallo! Ich bin da. Wohin möchtest du gehen?', help: 'Sag zum Beispiel „Ich möchte zum Louvre“. Wenn du nur einen Ort nennst, frage ich nach einer Bestätigung.', clarify: 'Ich habe keine Routenanfrage erkannt. Sage „Bring mich zu“ und den Ort oder bitte mich, eine Anweisung zu wiederholen.', confirm: (place) => `Möchtest du nach ${place}? Sag ja für die Route oder nein zum Abbrechen.`, cancel: 'Okay, ich starte keine Route. Wohin möchtest du gehen?', thanks: 'Gern geschehen! Ich bin da, wenn du mich brauchst.', stop: 'Alles klar, ich höre jetzt auf. Du kannst jederzeit wieder mit mir sprechen.', route: (place) => `Alles klar, ich plane deine Route nach ${place}.` },
+      'zh-CN': { greeting: '你好！我在这里陪着你。你想去哪里？', help: '例如说“带我去卢浮宫”。如果只说地点名称，我会先请你确认。', clarify: '我没有识别到路线请求。请说“带我去”加上地点名称，也可以让我重复路线指引。', confirm: (place) => `你想去${place}吗？请说“是”开始搜索，或说“不”取消。`, cancel: '好的，不会开始搜索。你想去哪里？', thanks: '不客气！需要时随时叫我。', stop: '好的，我先停止聆听。你随时可以再和我说话。', route: (place) => `好的，我来为你规划前往${place}的路线。` }
+    };
+
+    // Intent is classified before any destination is written or submitted.
+    function parseConversationIntent(rawText) {
+      const text = rawText.trim().replace(/[.!?,;:¡¿。！？、，；：]+/gu, ' ').replace(/\s+/g, ' ').trim();
+      const normalized = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[’']/g, ' ').replace(/[-–—]/g, ' ').replace(/\s+/g, ' ').trim();
+      const withoutName = normalized.replace(/^(?:hey |he |ok )?navigue\s*/i, '').replace(/\s+navigue$/i, '').trim();
+      if (/^(?:(?:bonjour|salut|coucou|bonsoir|hello|hi|hey|hola|buenos dias|buenas tardes|buenas noches|hallo|guten tag|guten morgen|guten abend)(?: a toi| tout le monde| mon ami| toi| comment ca va| ca va)?|ca va|comment (?:ca va|vas tu|allez vous)|comment tu vas|how are you|como estas|que tal|wie geht(?:s| es dir)|你好|您好|嗨|早上好|晚上好|你好吗)$/u.test(withoutName)) return { kind: 'greeting' };
+      if (/^(?:stop|arrete|arret|annule|annuler|au revoir|aurevoir|c est tout|merci c est tout|cancel|goodbye|bye|that s all|cancelar|cancela|adios|parar|stopp|halt|abbrechen|tschuss|auf wiedersehen|停止|停下|取消|再见|结束对话|就这样了)$/u.test(withoutName)) return { kind: 'stop' };
+      if (/^(?:oui|ouais|oui vas y|oui c est ca|d accord|ok|okay|yes|yes please|si|vale|ja|是|是的|对|好的|确认)$/u.test(withoutName)) return { kind: 'yes' };
+      if (/^(?:non|non merci|no|no thanks|nein|不|不是|不要)$/u.test(withoutName)) return { kind: 'no' };
+      if (/^(?:merci|merci beaucoup|super|genial|thank you|thanks|gracias|muchas gracias|danke|vielen dank|谢谢|太好了|很好)$/u.test(withoutName)) return { kind: 'thanks' };
+      if (/^(?:repete(?: la consigne)?|recommence|prochaine etape|consigne|repeat(?: the directions)?|next step|repite|repetir|siguiente paso|wiederholen|noch einmal|naechster schritt|nachster schritt|anweisung|重复|再说一次|下一步|指引)$/u.test(withoutName)) return { kind: 'repeat' };
+      if (/^(?:aide|aide moi|que peux tu faire|comment ca marche|help|help me|what can you do|ayuda|que puedes hacer|hilfe|was kannst du|wie funktioniert das|帮助|你能做什么|怎么使用)$/u.test(withoutName)) return { kind: 'help' };
+      // Strip social prefixes only when followed by an explicit navigation request.
+      const routeText = text.replace(/^(?:(?:bonjour|salut|bonsoir|hello|hi|hola|hallo|你好)[, ]*)?(?:navigue[, ]*)?/iu, '').trim();
+      const command = /^(?:(?:(?:je veux|je voudrais|j['’]aimerais|je souhaite)\s+(?:aller|me rendre)\s+(?:à|a|au|aux|chez|vers)|(?:emm[eè]ne[- ]moi|conduis[- ]moi)\s+(?:à|a|au|aux|chez|vers)|(?:trouve(?:[- ]moi)?\s+(?:un\s+)?(?:itin[eé]raire|chemin)|itin[eé]raire)\s+(?:vers|pour)|(?:va|aller)\s+(?:à|a|au|aux|chez|vers)|(?:take me|navigate|directions|route)\s+to|(?:i want|i would like|i'd like)\s+to\s+go\s+to|quiero\s+ir\s+(?:a|al)|(?:llevame|llévame)\s+(?:a|al)|ruta\s+(?:a|al)|(?:ich mochte|ich möchte|ich will)\s+(?:gehen\s+)?(?:zu|zum|zur|nach|in)|(?:bring mich|navigiere mich)\s+(?:zu|zum|zur|nach)|(?:à|au|aux|chez|vers))\s+|(?:请带我去|带我去|我想去|我想前往|导航到|路线到|去)\s*)/iu;
+      const match = routeText.match(command);
+      if (match) {
+        const destination = routeText.slice(match[0].length).replace(/(?:\s+(?:s il te plait|s'il te plaît|s’il te plaît|please|por favor|bitte))$/iu, '').trim();
+        return destination ? { kind: 'route', destination } : { kind: 'help' };
+      }
+      if (!text || /^(?:(?:je|tu|il|elle|on|nous|vous|comment|pourquoi|quel|quelle|peux)\b|qu est|est ce|j ai|i |you |how |what |why |can |como |que |puedes |wie |was |warum )/iu.test(normalized) || text.length > 120) return { kind: 'unknown' };
+      return { kind: 'place', destination: text };
+    }
+
     function cleanSpokenDestination(text) {
-      const normalized = text.trim().replace(/[.!?,;:]+$/g, "");
-      const language = uiLanguage();
-      if (language === "de-DE") {
-        return normalized.replace(/^(?:(?:ich möchte|ich will|bitte bring mich|navigiere mich|route|weg)\s+(?:gehen\s+)?(?:zu|zum|zur|nach|in|an)?\s*)/i, "").trim();
-      }
-      if (language === "zh-CN") {
-        return normalized.replace(/^(?:请带我去|带我去|我想去|我想前往|导航到|路线到|去)\s*/u, "").trim();
-      }
-      const command = /^(?:na[v]igue[, ]*)?(?:(?:je veux|je voudrais|j['’]aimerais)\s+(?:aller|me rendre)\s+(?:a|à|au|aux|chez|vers)|emm[eè]ne[- ]moi\s+(?:a|à|au|aux|chez|vers)|conduis[- ]moi\s+(?:a|à|au|aux|chez|vers)|trouve(?:[- ]moi)?\s+(?:un )?(?:itin[eé]raire|chemin)\s+(?:vers|pour)|pour aller\s+(?:a|à|au|aux|chez|vers)|itin[eé]raire\s+(?:vers|pour)|va\s+(?:a|à|au|aux|chez|vers))\s+/i;
-      const directPlace = /^(?:a|à|au|aux|chez|vers)\s+/i;
-      return normalized.replace(command, "").replace(directPlace, "").trim();
+      const intent = parseConversationIntent(text);
+      return intent.destination || '';
     }
 
     function handleConversationInput(rawText) {
-      const text = rawText.trim();
-      const normalized = text.toLocaleLowerCase("fr-FR").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[.!?,;:]/g, "");
       const language = uiLanguage();
-      if (language === "de-DE") {
-        if (/^(stopp|stop|halt|abbrechen|tschuss|auf wiedersehen|das ist alles)$/.test(normalized)) {
-          stopConversationAfterReply = true;
-          return "Alles klar, ich höre jetzt auf. Du kannst jederzeit wieder mit mir sprechen.";
-        }
-        if (/^(danke|vielen dank|super|toll)$/.test(normalized)) return "Gern geschehen. Kann ich dir noch bei etwas helfen?";
-        if (/\b(wiederholen|noch einmal|naechster schritt|anweisung)\b/.test(normalized)) {
-          conversationAwaitingDestination = false;
-          return currentVoiceInstruction();
-        }
-        if (/^(hallo|guten tag|guten morgen|guten abend|wie gehts|wie geht es dir)$/.test(normalized)) {
-          return "Hallo! Ich bin da. Wohin möchtest du gehen?";
-        }
-        if (/^(hilfe|was kannst du|wie funktioniert das)$/.test(normalized)) {
-          conversationAwaitingDestination = true;
-          return "Sag zum Beispiel: „Ich möchte zum Louvre“ oder nenne einfach den Ort. Ich kann auch den nächsten Schritt wiederholen.";
-        }
-      } else if (language === "zh-CN") {
-        if (/^(停止|停下|取消|再见|结束对话|就这样了)$/u.test(normalized)) {
-          stopConversationAfterReply = true;
-          return "好的，我先停止聆听。你随时可以再和我说话。";
-        }
-        if (/^(谢谢|太好了|很好)$/u.test(normalized)) return "不客气。还需要我帮你做什么吗？";
-        if (/(重复|再说一次|下一步|指引)/u.test(normalized)) {
-          conversationAwaitingDestination = false;
-          return currentVoiceInstruction();
-        }
-        if (/^(你好|您好|嗨|早上好|晚上好|你好吗)$/u.test(normalized)) return "你好！我在这里陪着你。你想去哪里？";
-        if (/^(帮助|你能做什么|怎么使用)$/u.test(normalized)) {
-          conversationAwaitingDestination = true;
-          return "你可以说“带我去卢浮宫”，也可以直接说出地点名称。我还可以重复下一条路线指引。";
-        }
-      }
-      if (/^(stop|arrete|arret|annule|au revoir|aurevoir|c'est tout|merci c'est tout)$/.test(normalized)) {
+      const words = CONVERSATION_COPY[language] || CONVERSATION_COPY['fr-FR'];
+      const intent = parseConversationIntent(rawText);
+      if (intent.kind === 'greeting') return words.greeting;
+      if (intent.kind === 'thanks') return words.thanks;
+      if (intent.kind === 'repeat') return currentVoiceInstruction();
+      if (intent.kind === 'stop') {
+        pendingConversationDestination = '';
         stopConversationAfterReply = true;
-        return "D’accord, j’arrête de t’écouter. Tu peux me reparler quand tu veux.";
+        return words.stop;
       }
-      if (/\b(merci|super|genial)\b/.test(normalized)) return "Avec plaisir. Tu veux que je t’aide pour autre chose ?";
-      if (/\b(repete|recommence|prochaine etape|consigne)\b/.test(normalized)) {
-        conversationAwaitingDestination = false;
-        return currentVoiceInstruction();
+      if (intent.kind === 'no') {
+        pendingConversationDestination = '';
+        return words.cancel;
       }
-      if (/^(bonjour|salut|coucou|hello|bonsoir|ca va|comment ca va)$/.test(normalized)) {
-        return "Bonjour ! Je suis là avec toi. Où aimerais-tu aller ?";
+      if (intent.kind === 'help' || intent.kind === 'unknown') {
+        pendingConversationDestination = '';
+        return intent.kind === 'help' ? words.help : words.clarify;
       }
-
-      const destination = conversationAwaitingDestination ? text : cleanSpokenDestination(text);
-      if (destination && destination.length > 1 && destination.length < 180
-        && !/^(aide|que peux tu faire|comment ca marche|quel temps|quelle heure|hilfe|was kannst du|wie funktioniert das|帮助|你能做什么|怎么使用)/iu.test(normalized)) {
+      let destination = intent.destination;
+      if (intent.kind === 'yes') {
+        destination = pendingConversationDestination;
+        pendingConversationDestination = '';
+        if (!destination) return words.clarify;
+      } else if (intent.kind === 'place') {
+        pendingConversationDestination = destination;
+        return words.confirm(destination);
+      } else {
+        pendingConversationDestination = '';
+      }
+      if (destination && destination.length > 1 && destination.length < 180) {
         conversationAwaitingDestination = false;
         const destinationInput = document.getElementById("destination");
         if (kidMode) {
@@ -2074,18 +2130,9 @@
         }
         destinationInput.value = destination;
         window.setTimeout(() => document.getElementById("journeyForm").requestSubmit(), 300);
-        if (language === "de-DE") return `Alles klar, ich plane deine Route nach ${destination}. Sag mir gern, wenn ich einen Schritt wiederholen soll.`;
-        if (language === "zh-CN") return `好的，我来为你规划前往${destination}的路线。需要时可以让我重复路线指引。`;
-        return `D’accord, je prépare le trajet vers ${destination}. Tu pourras me demander de répéter une étape ou de choisir un autre mode de transport.`;
+        return words.route(destination);
       }
-      if (/^(aide|que peux tu faire|comment ca marche)$/.test(normalized)) {
-        conversationAwaitingDestination = true;
-        return "Tu peux me dire, par exemple, « je veux aller au Louvre », ou simplement donner le nom d’un lieu. Je peux aussi répéter une consigne.";
-      }
-      conversationAwaitingDestination = true;
-      if (language === "de-DE") return "Gern. Wohin möchtest du gehen? Du kannst mir eine Adresse oder einfach den Namen eines Ortes nennen.";
-      if (language === "zh-CN") return "当然可以。你想去哪里？可以告诉我地址，也可以直接说出地点名称。";
-      return "Bien sûr. Où veux-tu aller ? Tu peux me dire une adresse, un lieu, ou simplement le nom de ta destination.";
+      return words.clarify;
     }
 
     function startConversation() {
@@ -2100,6 +2147,7 @@
         return;
       }
       activeConversation = true;
+      pendingConversationDestination = "";
       conversationAwaitingDestination = false;
       conversationRecognition = new Recognition();
       conversationRecognition.lang = localStorage.getItem("navigueLanguage") || "fr-FR";
@@ -2139,9 +2187,7 @@
       };
       document.getElementById("conversationButton").setAttribute("aria-pressed", "true");
       document.getElementById("conversationButton").textContent = uiText("stopConversation");
-      const greeting = uiLanguage() === "de-DE" ? "Hallo, ich bin NaVigue. Wohin möchtest du gehen?"
-        : uiLanguage() === "zh-CN" ? "你好，我是 NaVigue。你想去哪里？"
-          : "Bonjour, je suis NaVigue. Où aimerais-tu aller ?";
+      const greeting = (CONVERSATION_COPY[uiLanguage()] || CONVERSATION_COPY["fr-FR"]).greeting;
       setAssistantMessage(uiLanguage() === "de-DE" ? "NaVigue hört zu" : uiLanguage() === "zh-CN" ? "NaVigue 正在聆听" : "NaVigue est à l’écoute.",
         uiLanguage() === "de-DE" ? "Der Browser fragt möglicherweise nach Mikrofonzugriff. Du kannst das Gespräch jederzeit beenden."
           : uiLanguage() === "zh-CN" ? "浏览器可能会请求麦克风权限。你可以随时结束对话。" : "Le navigateur peut demander l’autorisation du micro. Tu peux arrêter la conversation à tout moment.");

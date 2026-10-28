@@ -31,3 +31,13 @@ Le callback OAuth Google/Microsoft reste l’URL du projet Supabase et non le do
 - Vues carte, perspective et rue, selon la couverture des services cartographiques.
 - Espace de compte adulte avec nom d’accueil personnalisé, profils enfant gérés par le parent et destinations favorites préparées à l’avance. Les enfants n’ont pas de connexion autonome : un adulte ouvre leur profil et le mode enfant limite les destinations aux adresses enregistrées.
 - Application web installable (PWA) sur les navigateurs compatibles.
+
+## Langues et conversation
+
+Les commandes principales sont disponibles en français, anglais, espagnol, allemand et chinois simplifié. La langue et le thème (clair, sombre ou automatique) se choisissent en haut de page ou dans les préférences.
+
+La conversation distingue les salutations, remerciements, demandes d’aide et demandes de trajet. Une demande explicite comme « je veux aller au Louvre » lance la recherche ; un lieu donné seul demande une confirmation « oui » / « non ». La reconnaissance reste dépendante du navigateur. Les restrictions des destinations du mode enfant restent appliquées.
+
+« À découvrir en chemin » recherche dans un rayon de 5 km autour de la destination : parcs, restauration, culture, hôtels et autres hébergements, motels, bowling et activités (cinéma, piscine, sports, parcs de loisirs, etc.). La disponibilité dépend des lieux référencés dans OpenStreetMap et du service Photon. Une panne du service est signalée séparément d’une absence de résultats.
+
+Vérification des régressions : `node tests/regression.cjs` (aucune dépendance à installer). Les tests simulent les transcriptions et réponses cartographiques ; ils ne vérifient pas la capture réelle du microphone.
