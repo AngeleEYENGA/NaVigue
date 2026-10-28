@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f5f7f1">
+  <meta name="theme-color" content="#f5f7f1" id="themeColorMeta">
   <meta name="application-name" content="NaVigue">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="NaVigue">
@@ -30,6 +30,21 @@
       --shadow: 0 16px 42px rgba(24, 55, 45, .08);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
+    body.dark-mode {
+      color-scheme: dark;
+      --forest: #164f44;
+      --forest-dark: #d3eee2;
+      --green: #9bd9b7;
+      --lime: #91c979;
+      --cream: #293d35;
+      --ink: #e7eee9;
+      --muted: #a7b6ad;
+      --line: #394b42;
+      --paper: #202c26;
+      --canvas: #141d18;
+      --amber: #423a27;
+      --shadow: 0 16px 42px rgba(0, 0, 0, .24);
+    }
 
     * { box-sizing: border-box; }
     body { margin: 0; min-width: 320px; background: var(--canvas); color: var(--ink); }
@@ -43,10 +58,10 @@
     .brand img { display: block; width: 171px; height: auto; }
     .header-right { display: flex; align-items: center; gap: 12px; }
     .header-note { color: var(--muted); font-size: 13px; }
-    .round-button { width: 42px; height: 42px; border: 1px solid var(--line); background: white; border-radius: 50%; display: grid; place-items: center; cursor: pointer; }
+    .round-button { width: 42px; height: 42px; border: 1px solid var(--line); background: var(--paper); border-radius: 50%; display: grid; place-items: center; cursor: pointer; }
     .round-button svg { width: 19px; height: 19px; }
     .profile { border: 0; background: #e9f1e4; color: var(--forest); font-weight: 750; }
-    .header-action { min-height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: white; color: var(--forest); font-size: 12px; font-weight: 750; cursor: pointer; }
+    .header-action { min-height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--forest); font-size: 12px; font-weight: 750; cursor: pointer; }
     .header-action svg { width: 17px; height: 17px; }
     .header-action[hidden] { display: none; }
     #kidsToggle[aria-pressed="true"] { border-color: #efc95d; background: #fff3c7; color: #694d04; }
@@ -74,12 +89,12 @@
     .account-note { margin: 12px 0; padding: 11px 13px; border-radius: 11px; background: #f0f6e9; color: var(--forest); font-size: 12px; line-height: 1.5; }
     .account-note.warning { background: #fff3d4; color: #614d16; }
     .account-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 9px; margin: 14px 0; }
-    .account-actions button, .secondary-button { min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: white; color: var(--forest); font-weight: 700; cursor: pointer; }
+    .account-actions button, .secondary-button { min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--forest); font-weight: 700; cursor: pointer; }
     .account-actions button:hover, .secondary-button:hover { border-color: var(--green); background: #f4f8f1; }
     .account-consent { display: flex; align-items: flex-start; gap: 9px; padding: 10px 0; color: var(--ink); font-size: 12px; line-height: 1.45; }
     .account-consent input { flex: 0 0 auto; margin-top: 2px; accent-color: var(--forest); }
     .account-field { display: block; margin-top: 11px; color: var(--muted); font-size: 12px; font-weight: 700; }
-    .account-field input, .account-field select { display: block; width: 100%; min-height: 43px; margin-top: 5px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 9px; background: white; color: var(--ink); }
+    .account-field input, .account-field select { display: block; width: 100%; min-height: 43px; margin-top: 5px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); color: var(--ink); }
     .account-toggle { display: block; margin: 10px auto 0; border: 0; background: transparent; color: var(--green); font-size: 12px; font-weight: 700; cursor: pointer; }
     .account-status { min-height: 20px; margin: 10px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
     .account-status.is-error { color: #a52e22; }
@@ -119,12 +134,26 @@
     }
 
     main { padding: 20px 0 48px; }
-    .intro { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 25px; }
-    .eyebrow { color: var(--green); font-weight: 750; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; margin: 0 0 9px; }
-    h1 { font-size: clamp(29px, 3.2vw, 43px); letter-spacing: -.045em; line-height: 1.08; margin: 0; color: var(--forest-dark); }
-    .intro p { color: var(--muted); margin: 10px 0 0; font-size: 15px; }
-    .safe-pill { white-space: nowrap; border: 1px solid #dfe9d7; color: var(--green); background: #f0f6e9; padding: 10px 14px; border-radius: 99px; display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; }
+    .intro { position: relative; isolation: isolate; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(230px, .8fr); align-items: center; gap: 24px; min-height: 236px; margin: 9px 0 23px; padding: clamp(24px, 4vw, 42px); border: 1px solid rgba(255,255,255,.15); border-radius: 27px; background: radial-gradient(ellipse at 83% 18%, rgba(181,222,151,.22), transparent 34%), linear-gradient(120deg, #123f36 0%, #1c6250 58%, #397755 100%); box-shadow: 0 22px 48px rgba(22,79,68,.18); color: #fff; }
+    .intro::before, .intro::after { position: absolute; z-index: -1; content: ""; border: 1px solid rgba(255,255,255,.11); border-radius: 50%; }
+    .intro::before { width: 330px; height: 330px; right: 12%; top: -220px; }
+    .intro::after { width: 250px; height: 250px; right: -40px; bottom: -192px; }
+    .intro-copy { position: relative; z-index: 1; max-width: 610px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 7px; color: #d2e7c2; font-weight: 750; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; margin: 0 0 14px; }
+    .eyebrow::before { width: 7px; height: 7px; border-radius: 50%; background: #bfe294; box-shadow: 0 0 0 4px rgba(191,226,148,.15); content: ""; }
+    h1 { font-size: clamp(35px, 5vw, 58px); letter-spacing: -.055em; line-height: 1.02; margin: 0; color: #fff; }
+    .intro-copy > p:last-child { max-width: 450px; color: rgba(255,255,255,.82); margin: 13px 0 0; font-size: clamp(14px, 1.45vw, 17px); line-height: 1.55; }
+    .safe-pill { width: fit-content; margin-top: 21px; white-space: nowrap; border: 1px solid rgba(255,255,255,.22); color: #eff8e8; background: rgba(255,255,255,.09); padding: 9px 13px; border-radius: 99px; display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; }
     .safe-pill svg { width: 16px; height: 16px; }
+    .intro-art { position: relative; min-height: 168px; display: grid; place-items: center; }
+    .intro-map { width: min(100%, 330px); height: auto; overflow: visible; filter: drop-shadow(0 13px 18px rgba(5,32,25,.22)); }
+    .intro-map .map-glass { fill: rgba(255,255,255,.1); stroke: rgba(255,255,255,.25); }
+    .intro-map .street { fill: none; stroke: rgba(238,248,232,.62); stroke-width: 13; stroke-linecap: round; }
+    .intro-map .route { fill: none; stroke: #c9ef9a; stroke-width: 4; stroke-linecap: round; stroke-dasharray: 5 8; animation: trail-flow 3s linear infinite; }
+    .intro-map .pin { fill: #fff; stroke: #bfe294; stroke-width: 4; }
+    .intro-map .pin-core { fill: #397755; }
+    .intro-map .spark { fill: #e9f8c5; }
+    .hero-caption { position: absolute; right: 0; bottom: 3px; padding: 9px 12px; border: 1px solid rgba(255,255,255,.2); border-radius: 13px; background: rgba(15,57,47,.68); color: #eff8e8; font-size: 11px; font-weight: 700; box-shadow: 0 8px 20px rgba(5,32,25,.16); }
 
     .journey-form { background: var(--paper); border: 1px solid #e8ece6; box-shadow: var(--shadow); border-radius: 19px; padding: 18px 20px 20px; margin-bottom: 22px; }
     .form-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
@@ -236,6 +265,78 @@
     .setting-row input[type="range"] { width: 125px; accent-color: var(--forest); }
     .settings-footnote { margin: 12px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
     .settings-save { width: 100%; margin-top: 18px; }
+    body.dark-mode .header-action,
+    body.dark-mode .round-button,
+    body.dark-mode .journey-form,
+    body.dark-mode .card,
+    body.dark-mode .family-place,
+    body.dark-mode .account-actions button,
+    body.dark-mode .secondary-button,
+    body.dark-mode .family-row button,
+    body.dark-mode .settings-close,
+    body.dark-mode .setting-row select,
+    body.dark-mode .account-field input,
+    body.dark-mode .account-field select,
+    body.dark-mode .mode,
+    body.dark-mode .discover-filter {
+      background-color: var(--paper);
+      color: var(--ink);
+    }
+    body.dark-mode .header-action,
+    body.dark-mode .round-button,
+    body.dark-mode .journey-form,
+    body.dark-mode .card,
+    body.dark-mode .family-place,
+    body.dark-mode .account-actions button,
+    body.dark-mode .secondary-button,
+    body.dark-mode .family-row button,
+    body.dark-mode .settings-close,
+    body.dark-mode .setting-row select,
+    body.dark-mode .account-field input,
+    body.dark-mode .account-field select,
+    body.dark-mode .mode,
+    body.dark-mode .discover-filter { border-color: var(--line); }
+    body.dark-mode .primary { background: #286e52; color: #fff; }
+    body.dark-mode .primary:hover { background: #368763; }
+    body.dark-mode .mode[aria-pressed="true"],
+    body.dark-mode .discover-filter[aria-pressed="true"] { background: #2b4338; color: #b6e5c4; }
+    body.dark-mode .assistant-card { background: #23372d; border-color: #394f42; }
+    body.dark-mode .assistant-icon { background: #286e52; }
+    body.dark-mode .safe-pill { background: #263a30; border-color: #405649; color: #b6e5c4; }
+    body.dark-mode .external-route { background: #26362c; border-color: #405649; color: var(--ink); }
+    body.dark-mode .family-safety-note,
+    body.dark-mode .family-destinations,
+    body.dark-mode .kids-mode .assistant-card,
+    body.dark-mode .kids-mode .journey-animation { background: #39351f; border-color: #65582d; color: #f3e8b3; }
+    body.dark-mode .family-destinations h2,
+    body.dark-mode .family-destinations > p,
+    body.dark-mode .family-place-empty { color: #f3e8b3; }
+    body.dark-mode .family-place { border-color: #65582d; }
+    body.dark-mode .family-place small { color: var(--muted); }
+    body.dark-mode .account-note { background: #263a30; color: #b6e5c4; }
+    body.dark-mode .account-note.warning { background: #39351f; color: #f3e8b3; }
+    body.dark-mode .map-top .map-context,
+    body.dark-mode .view-switcher,
+    body.dark-mode .view-disclaimer,
+    body.dark-mode .map-caption,
+    body.dark-mode .map-tool {
+      background-color: rgba(25, 37, 30, .94);
+      border-color: #43564a;
+      color: #e7eee9;
+    }
+    body.dark-mode .map-caption,
+    body.dark-mode .map-watermark { color: #d3ded5; }
+    body.dark-mode .map-card { background: #202c26; }
+    body.dark-mode .map-card:not(.map-loaded) .map-art rect:first-child { fill: #293a31; }
+    body.dark-mode .map-card:not(.map-loaded) .map-art path[stroke="#fff"] { stroke: #3a4b41; }
+    body.dark-mode .map-card:not(.map-loaded) .map-art path[stroke="#dce8d8"] { stroke: #46594d; }
+    body.dark-mode .map-card:not(.map-loaded) .map-art path[stroke="#d8e9ed"] { stroke: #315357; }
+    body.dark-mode .map-card:not(.map-loaded) .map-art path[stroke="#78b56a"] { stroke: #83c578; }
+    body.dark-mode .map-card:not(.map-loaded) .map-art path[stroke-dasharray="3 11"] { stroke: #18251e; }
+    body.dark-mode .map-card:not(.map-loaded) .map-art path[stroke="#cbd8cc"] { stroke: #54675a; }
+    body.dark-mode .leaflet-control-attribution { background: rgba(25,37,30,.86) !important; color: #e7eee9 !important; }
+    body.dark-mode .leaflet-control-attribution a { color: #b6e5c4 !important; }
+    body.dark-mode .settings-dialog::backdrop { background: rgba(0,0,0,.68); }
 
     .right-column { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
     .map-card { overflow: hidden; position: relative; min-height: 405px; flex: 1; background: #eef1e8; }
@@ -316,8 +417,13 @@
       .brand img { width: 143px; }
       .header-note { display: none; }
       main { padding-top: 17px; }
-      .intro { align-items: flex-start; flex-direction: column; gap: 12px; margin-bottom: 19px; }
-      .intro p { font-size: 13px; }
+      .intro { grid-template-columns: minmax(0, 1fr) 150px; gap: 6px; min-height: 204px; margin: 3px 0 19px; padding: 23px 20px; border-radius: 21px; }
+      .intro h1 { font-size: clamp(32px, 8vw, 43px); }
+      .intro-copy > p:last-child { font-size: 13px; }
+      .intro-art { min-height: 120px; }
+      .intro-map { width: 185px; }
+      .hero-caption { right: 0; bottom: -7px; max-width: 154px; font-size: 9px; }
+      .safe-pill { margin-top: 14px; white-space: normal; font-size: 10px; }
       .safe-pill { font-size: 11px; padding: 8px 11px; }
       .journey-form { padding: 16px 14px; margin-bottom: 15px; }
       .simple-label { display: none; }
@@ -346,10 +452,16 @@
       .header-action { min-height: 38px; padding: 0 9px; font-size: 11px; }
       .header-note { display: none; }
       .brand img { width: 118px; }
-      #languageButton, .profile { display: none; }
+      .profile { display: none; }
     }
     @media (max-width: 380px) {
       .brand img { width: 88px; }
+      .intro { grid-template-columns: 1fr; min-height: 0; }
+      .intro-art { position: absolute; width: 135px; right: 8px; bottom: 12px; min-height: 88px; opacity: .48; }
+      .intro-map { width: 135px; }
+      .hero-caption { display: none; }
+      .intro-copy { max-width: 88%; }
+      .safe-pill { max-width: 90%; }
       .header-action { gap: 4px; padding: 0 6px; font-size: 10px; }
       #kidsToggle, #accountButton, #installButton { width: 38px; min-width: 38px; padding: 0; font-size: 0; }
       #kidsToggle::after { content: "Enf."; font-size: 9px; }
@@ -362,6 +474,66 @@
       .journey-animation *, .family-safety-note, .family-place-icon, .kids-mode .primary { animation: none !important; }
       .family-place { transition: none !important; }
     }
+
+    /* Responsive polish: keep controls readable at every screen size. */
+    header { min-height: 96px; height: auto; gap: 24px; padding-block: 18px; flex-wrap: wrap; }
+    .brand img { width: 180px; }
+    .header-right { flex-wrap: wrap; justify-content: flex-end; }
+    .header-note { display: none; }
+    .display-controls { display: flex; align-items: center; gap: 8px; }
+    .display-controls select { min-height: 42px; max-width: 150px; padding: 8px 30px 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--ink); font: inherit; font-size: 12px; cursor: pointer; }
+    select:focus-visible { outline: 3px solid #8fc66f; outline-offset: 3px; }
+    #accountButton { background: var(--forest); color: white; border-color: transparent; }
+    .intro { min-height: 280px; border-radius: 28px; box-shadow: 0 16px 40px #123f3614; }
+    .intro-copy { min-width: 0; }
+    .intro-copy > p:last-of-type { max-width: 440px; margin: 16px 0 0; color: #e1eddf; font-size: 16px; line-height: 1.65; }
+    .safe-pill { max-width: 100%; white-space: normal; line-height: 1.5; background: #123f3666; color: #eff8e8; }
+    .safe-pill svg { flex-shrink: 0; }
+    .hero-caption { text-align: center; }
+    .field, .left-column, .workspace > *, .assistant-copy { min-width: 0; }
+    .assistant-actions { gap: 8px; }
+    .assistant-actions button { white-space: normal; height: auto; padding-block: 10px; line-height: 1.4; }
+    body.dark-mode .brand img { filter: brightness(0) invert(1); }
+    body.dark-mode #accountButton { background: #286e52; color: white; }
+    body.dark-mode .account-profile { background: var(--canvas); }
+    body.dark-mode .account-actions button:hover, body.dark-mode .secondary-button:hover { background: #2b4338; }
+    body.dark-mode .toast { background: #d3eee2; color: #103c34; }
+    body.dark-mode.high-contrast { --ink: #fff; --muted: #d0ddd5; --line: #8aab97; --canvas: #0b140e; }
+    @media (max-width: 1000px) {
+      header { gap: 14px; }
+      .header-right { gap: 8px; }
+      .brand img { width: 150px; }
+    }
+    @media (max-width: 640px) {
+      .shell { padding-inline: 16px; }
+      header { display: grid; grid-template-columns: 1fr; padding-block: 20px 10px; gap: 16px; }
+      .brand img { width: 160px; }
+      .header-right { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
+      .header-action, #kidsToggle, #accountButton, #installButton { width: auto; min-width: 0; min-height: 44px; padding: 8px 10px; font-size: 12px; line-height: 1.35; }
+      #kidsToggle::after, #accountButton::after { content: none; }
+      #accountButton { grid-column: 2; grid-row: 1; }
+      #installButton { grid-column: 1 / -1; }
+      .display-controls { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; }
+      .display-controls select { width: 100%; max-width: none; min-height: 44px; }
+      #languageButton { display: none; }
+      main { padding-top: 10px; }
+      .intro { grid-template-columns: 1fr; padding: 28px 24px 20px; gap: 20px; min-height: 0; }
+      .intro-copy { max-width: none; }
+      .intro h1 { max-width: 100%; font-size: clamp(30px, 8vw, 44px); line-height: 1.12; overflow-wrap: anywhere; }
+      .intro-copy > p:last-of-type { font-size: 14px; line-height: 1.65; }
+      .intro-art { position: relative; width: 100%; right: auto; bottom: auto; min-height: 110px; opacity: 1; }
+      .intro-map { width: min(100%, 240px); }
+      .hero-caption { display: none; }
+      .safe-pill { max-width: 100%; font-size: 11px; margin-top: 18px; }
+      .form-grid { grid-template-columns: 1fr; gap: 12px; }
+      .swap { justify-self: center; height: 28px; transform: rotate(90deg); }
+      .input-wrap { min-height: 50px; padding-inline: 13px; }
+      .input-wrap input { font-size: 16px; }
+      .field label { font-size: 11px; }
+      .assistant-actions { display: grid; grid-template-columns: 1fr; }
+      .assistant-actions button { width: 100%; min-height: 44px; }
+      .discover-items { min-width: 0; max-width: 100%; }
+    }
   </style>
 </head>
 <body>
@@ -371,6 +543,10 @@
         <img src="wordmark-navigue.svg" alt="NaVigue — Tous les chemins, à votre rythme.">
       </a>
       <div class="header-right">
+        <div class="display-controls">
+          <select id="quickLanguage" aria-label="Langue"><option value="fr-FR">Français</option><option value="de-DE">Deutsch</option><option value="zh-CN">中文（简体）</option></select>
+          <select id="quickTheme" aria-label="Apparence"><option value="system">Selon l’appareil</option><option value="light">Clair</option><option value="dark">Sombre</option></select>
+        </div>
         <span class="header-note">La navigation, simplement.</span>
         <button class="header-action" id="kidsToggle" type="button" aria-pressed="false" aria-controls="familySafetyNote">Mode enfant</button>
         <button class="header-action" id="installButton" type="button">
@@ -386,14 +562,25 @@
 
     <main>
       <section class="intro" aria-labelledby="pageTitle">
-        <div>
+        <div class="intro-copy">
           <p class="eyebrow" id="welcomeLine" aria-live="polite">Votre compagnon de route</p>
           <h1 id="pageTitle">On y va ensemble&nbsp;?</h1>
           <p>Une destination, des explications claires. NaVigue s’occupe du chemin.</p>
+          <div class="safe-pill">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z"/><path d="m9 12 2 2 4-4"/></svg>
+            Des consignes à votre rythme
+          </div>
         </div>
-        <div class="safe-pill">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z"/><path d="m9 12 2 2 4-4"/></svg>
-          Des consignes à votre rythme
+        <div class="intro-art" aria-hidden="true">
+          <svg class="intro-map" viewBox="0 0 340 190" role="presentation">
+            <rect class="map-glass" x="22" y="12" width="296" height="164" rx="28"/>
+            <path class="street" d="M55 47h69c28 0 34 31 64 31h91M48 132h72c28 0 34-28 62-28h95M115 30v28m98 74v27"/>
+            <path class="route" d="M60 132h58c28 0 34-28 64-28h43c20 0 25-26 48-26"/>
+            <circle class="pin" cx="60" cy="132" r="13"/><circle class="pin-core" cx="60" cy="132" r="4"/>
+            <path class="pin" d="M261 50c-11 0-19 8-19 19 0 13 19 31 19 31s19-18 19-31c0-11-8-19-19-19Z"/><circle class="pin-core" cx="261" cy="69" r="5"/>
+            <circle class="spark" cx="80" cy="43" r="4"/><circle class="spark" cx="294" cy="132" r="5"/>
+          </svg>
+          <span class="hero-caption">Un pas après l’autre, on y arrive.</span>
         </div>
       </section>
       <aside class="family-safety-note" id="familySafetyNote" role="note" aria-live="polite">
@@ -526,7 +713,7 @@
             </div>
             <div class="preference-detail">Nous privilégierons les ascenseurs et les passages sans marche. La disponibilité réelle des équipements reste à confirmer localement.</div>
             <div class="prefs-foot">
-              <span>Voix, affichage, langue</span>
+              <span id="preferenceSummary">Apparence, langue et accessibilité</span>
               <button id="preferencesButton" type="button">Personnaliser</button>
             </div>
           </section>
@@ -698,8 +885,22 @@
         <input id="welcomeSetting" type="checkbox">
       </div>
       <div class="setting-row">
-        <div><label for="languageSetting">Langue de la voix</label><small>Choisit la langue des consignes vocales et de la dictée.</small></div>
-        <select id="languageSetting"><option value="fr-FR">Français</option><option value="en-US">English</option><option value="es-ES">Español</option></select>
+        <div><label for="languageSetting" id="languageSettingLabel">Langue de l’application et de la voix</label><small id="languageSettingHint">Traduit les commandes principales et choisit la langue des consignes vocales et de la dictée.</small></div>
+        <select id="languageSetting">
+          <option value="fr-FR">Français</option>
+          <option value="en-US">English</option>
+          <option value="es-ES">Español</option>
+          <option value="de-DE">Deutsch</option>
+          <option value="zh-CN">中文（简体）</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <div><label for="themeSetting" id="themeSettingLabel">Apparence</label><small id="themeSettingHint">Choisissez le thème clair, sombre ou celui de votre appareil.</small></div>
+        <select id="themeSetting">
+          <option value="system">Selon l’appareil</option>
+          <option value="light">Clair</option>
+          <option value="dark">Sombre</option>
+        </select>
       </div>
       <div class="setting-row">
         <div><label for="speechRate">Vitesse de parole</label><small>Plus lent pour mieux suivre les consignes.</small></div>
@@ -713,7 +914,7 @@
         <div><label for="contrastSetting">Contraste renforcé</label><small>Renforce les contrastes pour faciliter la lecture.</small></div>
         <input id="contrastSetting" type="checkbox">
       </div>
-      <p class="settings-footnote">La langue choisie concerne la voix et la dictée, pas encore tous les textes de l’interface. Le micro et la localisation restent désactivés tant que vous ne lancez pas la dictée ou la demande de position.</p>
+      <p class="settings-footnote" id="settingsFootnote">Le micro et la localisation restent désactivés tant que vous ne lancez pas la dictée ou la demande de position.</p>
       <button class="primary settings-save" value="save" id="saveSettings">Enregistrer mes préférences</button>
     </form>
   </dialog>
@@ -1518,9 +1719,218 @@
       const messages = {
         "fr-FR": `${greeting}je suis NaVigue. Dis-moi où tu veux aller, ou demande-moi de répéter une consigne. On avancera tranquillement, étape par étape.`,
         "en-US": "Welcome to NaVigue. I am here to guide you, one step at a time, at your own pace.",
-        "es-ES": "Te damos la bienvenida a NaVigue. Estoy aquí para guiarte paso a paso y a tu ritmo."
+        "es-ES": "Te damos la bienvenida a NaVigue. Estoy aquí para guiarte paso a paso y a tu ritmo.",
+        "de-DE": `Willkommen bei NaVigue${userName ? `, ${userName}` : ""}. Ich begleite dich Schritt für Schritt und in deinem Tempo.`,
+        "zh-CN": `欢迎使用 NaVigue${userName ? `，${userName}` : ""}。我会按照你的节奏，一步一步为你指路。`
       };
       return messages[language] || messages["fr-FR"];
+    }
+
+    const UI_COPY = {
+      "fr-FR": {
+        tagline: "La navigation, simplement.", kids: "Mode enfant", install: "Installer", account: "Compte adulte", accountSignedIn: "Mon compte",
+        welcome: "Votre compagnon de route", title: "On y va ensemble\u00a0?", description: "Une destination, des explications claires. NaVigue s’occupe du chemin.",
+        safe: "Des consignes à votre rythme", formTitle: "Où souhaitez-vous aller\u00a0?", formHint: "Vous pourrez changer d’avis en chemin.",
+        origin: "JE PARS DE", destination: "JE VAIS À", destinationPlaceholder: "Une adresse ou un lieu", find: "Trouver mon chemin",
+        assistantTitle: "Bonjour, je suis NaVigue.", assistantMessage: "Touchez « Parler avec NaVigue » pour échanger à voix haute. Le micro ne s’active qu’à votre demande ; la reconnaissance vocale dépend de votre navigateur.",
+        voiceOn: "Activer la voix", voiceOff: "Désactiver la voix", conversation: "Parler avec NaVigue", stopConversation: "Arrêter la conversation", dictation: "Dicter une destination",
+        routeTitle: "Votre chemin, pas à pas", alternative: "Autre option", walk: "À pied", bike: "Vélo", transit: "Bus, métro & train",
+        car: "Voiture", taxi: "VTC / taxi", distance: "Calculez un itinéraire", arrival: "En attente", stepStart: "Indiquez votre départ et votre destination",
+        stepDescription: "NaVigue calculera les consignes à suivre.", start: "Démarrer le guidage", repeat: "Lire la prochaine consigne à voix haute",
+        accessible: "Itinéraire accessible", obstacles: "Éviter escaliers et obstacles", personalize: "Personnaliser", mapDestination: "Votre trajet apparaîtra ici",
+        mapDescription: "Carte réelle OpenStreetMap", plan: "Plan", view3d: "Vue 3D", street: "Vue rue", discover: "À découvrir en chemin",
+        discoverDescription: "Lieux proches de votre destination, depuis OpenStreetMap.", all: "Tout", parks: "Parcs", food: "Manger", culture: "Culture",
+        nearbyEmpty: "Calculez d’abord un trajet pour trouver des lieux à proximité.", preferences: "Apparence, langue et accessibilité",
+        settingsTitle: "Mes préférences", settingsDescription: "NaVigue s’adapte à votre façon de voyager.", welcomeSetting: "Accueil vocal",
+        welcomeHint: "Lire un message de bienvenue au prochain démarrage.", language: "Langue de l’application et de la voix",
+        languageHint: "Traduit les commandes principales et choisit la langue des consignes vocales et de la dictée.",
+        theme: "Apparence", themeHint: "Choisissez le thème clair, sombre ou celui de votre appareil.", system: "Selon l’appareil",
+        light: "Clair", dark: "Sombre", speechRate: "Vitesse de parole", speechRateHint: "Plus lent pour mieux suivre les consignes.",
+        largeText: "Texte agrandi", largeTextHint: "Augmente la taille des consignes et des textes utiles.",
+        contrast: "Contraste renforcé", contrastHint: "Renforce les contrastes pour faciliter la lecture.",
+        footnote: "Le micro et la localisation restent désactivés tant que vous ne lancez pas la dictée ou la demande de position.",
+        saveSettings: "Enregistrer mes préférences", kidTitle: "On part à l’aventure", kidDescription: "Choisis une destination avec un adulte : NaVigue vous montre le chemin.",
+        kidFormTitle: "Où veux-tu aller\u00a0?", kidHint: "Un adulte peut t’aider à choisir.", kidFind: "Montre-moi le chemin",
+        kidAssistantTitle: "Salut ! Je suis NaVigue.", kidAssistantMessage: "Demande à un adulte de t’accompagner et d’autoriser la position avant de commencer.",
+        kidRouteTitle: "Ton chemin, étape par étape", kidStart: "Suivre mon trajet"
+      },
+      "de-DE": {
+        tagline: "Navigation, ganz einfach.", kids: "Kindermodus", install: "Installieren", account: "Erwachsenenkonto", accountSignedIn: "Mein Konto",
+        welcome: "Dein Wegbegleiter", title: "Gehen wir gemeinsam los?", description: "Ein Ziel, klare Wegbeschreibungen. NaVigue findet den Weg.",
+        safe: "Schritt für Schritt, in deinem Tempo", formTitle: "Wohin möchtest du?", formHint: "Du kannst dein Ziel unterwegs ändern.",
+        origin: "START", destination: "ZIEL", destinationPlaceholder: "Adresse oder Ort", find: "Route finden",
+        assistantTitle: "Hallo, ich bin NaVigue.", assistantMessage: "Tippe auf „Mit NaVigue sprechen“, um dich mit mir zu unterhalten. Das Mikrofon wird erst nach deiner Zustimmung aktiviert.",
+        voiceOn: "Sprachausgabe einschalten", voiceOff: "Sprachausgabe ausschalten", conversation: "Mit NaVigue sprechen", stopConversation: "Gespräch beenden", dictation: "Ziel diktieren",
+        routeTitle: "Dein Weg, Schritt für Schritt", alternative: "Alternative", walk: "Zu Fuß", bike: "Fahrrad", transit: "Bus, U-Bahn & Zug",
+        car: "Auto", taxi: "Taxi / Fahrdienst", distance: "Route berechnen", arrival: "Bereit", stepStart: "Gib Start und Ziel ein",
+        stepDescription: "NaVigue zeigt dir den Weg Schritt für Schritt.", start: "Navigation starten", repeat: "Nächste Anweisung vorlesen",
+        accessible: "Barrierefreie Route", obstacles: "Treppen und Hindernisse vermeiden", personalize: "Anpassen", mapDestination: "Deine Route wird hier angezeigt",
+        mapDescription: "OpenStreetMap-Karte", plan: "Karte", view3d: "3D-Ansicht", street: "Straßenansicht", discover: "Unterwegs entdecken",
+        discoverDescription: "Orte in der Nähe deines Ziels auf OpenStreetMap.", all: "Alle", parks: "Parks", food: "Essen", culture: "Kultur",
+        nearbyEmpty: "Berechne zuerst eine Route, um Orte in der Nähe zu entdecken.", preferences: "Darstellung, Sprache & Barrierefreiheit",
+        settingsTitle: "Einstellungen", settingsDescription: "NaVigue passt sich deiner Reise an.", welcomeSetting: "Sprachbegrüßung",
+        welcomeHint: "Beim nächsten Start eine Begrüßung abspielen.", language: "App- und Sprachassistent-Sprache",
+        languageHint: "Übersetzt die wichtigsten Bedienelemente und wählt die Sprache für Ansagen und Diktat.",
+        theme: "Darstellung", themeHint: "Wähle das helle, dunkle oder das Gerätethema.", system: "Wie auf dem Gerät",
+        light: "Hell", dark: "Dunkel", speechRate: "Sprechtempo", speechRateHint: "Langsamer, damit du den Anweisungen leichter folgen kannst.",
+        largeText: "Größere Schrift", largeTextHint: "Vergrößert wichtige Hinweise und Texte.",
+        contrast: "Hoher Kontrast", contrastHint: "Erhöht den Kontrast für bessere Lesbarkeit.",
+        footnote: "Mikrofon und Standort bleiben aus, bis du das Diktat oder die Standortabfrage startest.",
+        saveSettings: "Einstellungen speichern", kidTitle: "Los geht das Abenteuer", kidDescription: "Wähle dein Ziel gemeinsam mit einer erwachsenen Begleitperson.",
+        kidFormTitle: "Wohin möchtest du?", kidHint: "Eine erwachsene Person kann dir helfen.", kidFind: "Zeig mir den Weg",
+        kidAssistantTitle: "Hallo! Ich bin NaVigue.", kidAssistantMessage: "Bitte eine erwachsene Begleitperson, dich zu begleiten und den Standort freizugeben.",
+        kidRouteTitle: "Dein Weg, Schritt für Schritt", kidStart: "Route starten"
+      },
+      "zh-CN": {
+        tagline: "导航，其实很简单。", kids: "儿童模式", install: "安装", account: "成人账户", accountSignedIn: "我的账户",
+        welcome: "你的出行伙伴", title: "我们一起出发吧？", description: "告诉我目的地，NaVigue 会一步一步为你指路。",
+        safe: "按照你的节奏，一步一步来", formTitle: "你想去哪里？", formHint: "途中也可以更改目的地。",
+        origin: "出发地", destination: "目的地", destinationPlaceholder: "地址或地点", find: "为我导航",
+        assistantTitle: "你好，我是 NaVigue。", assistantMessage: "点击“和 NaVigue 对话”即可语音交流。只有在你主动使用时，应用才会请求麦克风权限。",
+        voiceOn: "开启语音", voiceOff: "关闭语音", conversation: "和 NaVigue 对话", stopConversation: "结束对话", dictation: "语音输入目的地",
+        routeTitle: "一步一步跟我走", alternative: "其他路线", walk: "步行", bike: "骑行", transit: "公交、地铁和火车",
+        car: "驾车", taxi: "出租车 / 网约车", distance: "规划路线", arrival: "准备就绪", stepStart: "请输入出发地和目的地",
+        stepDescription: "NaVigue 会为你规划清晰的路线指引。", start: "开始导航", repeat: "朗读下一条指引",
+        accessible: "无障碍路线", obstacles: "避开楼梯和障碍", personalize: "个性化设置", mapDestination: "路线将在此显示",
+        mapDescription: "OpenStreetMap 地图", plan: "地图", view3d: "3D 视图", street: "街景", discover: "沿途探索",
+        discoverDescription: "在 OpenStreetMap 上查看目的地附近的地点。", all: "全部", parks: "公园", food: "美食", culture: "文化",
+        nearbyEmpty: "请先规划路线，再查找附近地点。", preferences: "外观、语言和无障碍设置",
+        settingsTitle: "偏好设置", settingsDescription: "NaVigue 会适应你的出行方式。", welcomeSetting: "语音问候",
+        welcomeHint: "下次打开应用时播放欢迎语。", language: "应用和语音语言",
+        languageHint: "翻译主要操作界面，并设置语音指引和语音输入的语言。",
+        theme: "外观", themeHint: "选择浅色、深色或跟随设备设置。", system: "跟随设备",
+        light: "浅色", dark: "深色", speechRate: "语速", speechRateHint: "放慢语速，让指引更容易听清。",
+        largeText: "放大文字", largeTextHint: "放大路线提示和重要文字。",
+        contrast: "高对比度", contrastHint: "提高对比度，让内容更清晰。",
+        footnote: "只有在你主动使用语音输入或定位时，应用才会请求麦克风或位置信息。",
+        saveSettings: "保存设置", kidTitle: "一起开启冒险吧", kidDescription: "请和陪伴你的成年人一起选择目的地。",
+        kidFormTitle: "你想去哪里？", kidHint: "可以请成年人帮你选择。", kidFind: "带我去那里",
+        kidAssistantTitle: "你好！我是 NaVigue。", kidAssistantMessage: "开始前，请让一位成年人陪伴你并允许使用位置信息。",
+        kidRouteTitle: "一步一步跟我走", kidStart: "开始我的路线"
+      }
+    };
+    const uiLanguage = () => localStorage.getItem("navigueLanguage") || "fr-FR";
+    const uiText = (key) => UI_COPY[uiLanguage()]?.[key] || UI_COPY["fr-FR"][key];
+
+    function setButtonText(element, text) {
+      const textNode = [...element.childNodes].reverse().find((node) => node.nodeType === Node.TEXT_NODE);
+      if (textNode) textNode.textContent = ` ${text}`;
+      else element.textContent = text;
+    }
+
+    function applyLanguageUI(language = uiLanguage()) {
+      const words = UI_COPY[language] || UI_COPY["fr-FR"];
+      document.documentElement.lang = language.slice(0, 2);
+      document.title = language === "de-DE"
+        ? "NaVigue — Dein Weg, in deinem Tempo"
+        : language === "zh-CN" ? "NaVigue — 按照你的节奏，带你前行" : "NaVigue — Tous les chemins, à votre rythme";
+      const childName = window.NavigueFamilyAuth?.activeChild?.child_name;
+      const signedIn = Boolean(window.NavigueFamilyAuth?.signedIn);
+      document.querySelector(".header-note").textContent = words.tagline;
+      setButtonText(document.getElementById("kidsToggle"), kidMode ? `${words.kids} : ${childName || ""}` : words.kids);
+      setButtonText(document.getElementById("installButton"), words.install);
+      setButtonText(document.getElementById("accountButton"), signedIn ? words.accountSignedIn : words.account);
+      document.getElementById("accountButton").setAttribute("aria-label", signedIn ? words.accountSignedIn : words.account);
+      document.getElementById("languageButton").setAttribute("aria-label", language === "de-DE" ? "Sprache auswählen"
+        : language === "zh-CN" ? "选择语言" : "Choisir la langue");
+      document.getElementById("languageButton").title = `Language: ${language}`;
+      document.getElementById("welcomeLine").textContent = window.NavigueFamilyAuth?.displayName
+        ? (language === "de-DE" ? `Willkommen, ${window.NavigueFamilyAuth.displayName}!`
+          : language === "zh-CN" ? `欢迎，${window.NavigueFamilyAuth.displayName}！`
+            : `Bienvenue, ${window.NavigueFamilyAuth.displayName} !`)
+        : words.welcome;
+      document.getElementById("pageTitle").textContent = kidMode
+        ? (language === "de-DE" ? `Los geht das Abenteuer${childName ? `, ${childName}` : ""}!`
+          : language === "zh-CN" ? `一起开启冒险${childName ? `，${childName}` : ""}吧！`
+            : `${words.kidTitle}${childName ? `, ${childName}` : ""} ?`)
+        : words.title;
+      document.querySelector(".intro-copy > p:last-of-type").textContent = kidMode ? words.kidDescription : words.description;
+      setButtonText(document.querySelector(".safe-pill"), words.safe);
+      document.querySelector(".journey-form .form-head h2").textContent = kidMode ? words.kidFormTitle : words.formTitle;
+      document.querySelector(".journey-form .simple-label").textContent = kidMode ? words.kidHint : words.formHint;
+      document.querySelector('label[for="origin"]').textContent = words.origin;
+      document.querySelector('label[for="destination"]').textContent = words.destination;
+      document.getElementById("destination").placeholder = words.destinationPlaceholder;
+      const originInput = document.getElementById("origin");
+      if (["Ma position", "My location", "Mein Standort", "我的位置"].includes(originInput.value)) {
+        originInput.value = language === "de-DE" ? "Mein Standort" : language === "zh-CN" ? "我的位置" : "Ma position";
+      }
+      setButtonText(document.querySelector("#journeyForm .form-grid .primary"), kidMode ? words.kidFind : words.find);
+      document.getElementById("assistantTitle").textContent = kidMode ? words.kidAssistantTitle : words.assistantTitle;
+      document.getElementById("assistantMessage").textContent = kidMode ? words.kidAssistantMessage : words.assistantMessage;
+      document.getElementById("assistantButton").textContent = localStorage.getItem("navigueVoiceEnabled") === "true" ? words.voiceOff : words.voiceOn;
+      document.getElementById("conversationButton").textContent = activeConversation ? words.stopConversation : words.conversation;
+      document.getElementById("dictationButton").title = words.dictation;
+      document.getElementById("dictationButton").setAttribute("aria-label", words.dictation);
+      document.getElementById("routeTitle").textContent = kidMode ? words.kidRouteTitle : words.routeTitle;
+      document.getElementById("alternativeButton").textContent = words.alternative;
+      for (const [mode, key] of [["walk", "walk"], ["bike", "bike"], ["transit", "transit"], ["car", "car"], ["taxi", "taxi"]]) {
+        const button = document.querySelector(`.mode[data-mode="${mode}"]`);
+        if (button) setButtonText(button, words[key]);
+      }
+      if (document.getElementById("routeDistance").textContent === UI_COPY["fr-FR"].distance
+        || document.getElementById("routeDistance").textContent === UI_COPY["de-DE"].distance
+        || document.getElementById("routeDistance").textContent === UI_COPY["zh-CN"].distance) {
+        document.getElementById("routeDistance").textContent = words.distance;
+      }
+      if (document.getElementById("routeArrival").textContent === "En attente"
+        || document.getElementById("routeArrival").textContent === UI_COPY["de-DE"].arrival
+        || document.getElementById("routeArrival").textContent === UI_COPY["zh-CN"].arrival) {
+        document.getElementById("routeArrival").textContent = words.arrival;
+      }
+      const firstStep = document.querySelector("#stepList .step");
+      if (firstStep) {
+        firstStep.querySelector("strong").textContent = words.stepStart;
+        firstStep.querySelector("small").textContent = words.stepDescription;
+      }
+      setButtonText(document.getElementById("startButton"), kidMode ? words.kidStart : words.start);
+      document.getElementById("voiceButton").title = words.repeat;
+      document.getElementById("voiceButton").setAttribute("aria-label", words.repeat);
+      document.querySelector(".preference-copy strong").textContent = words.accessible;
+      document.querySelector(".preference-copy span").textContent = words.obstacles;
+      document.getElementById("preferencesButton").textContent = words.personalize;
+      document.getElementById("preferenceSummary").textContent = words.preferences;
+      document.getElementById("mapDestination").textContent = words.mapDestination;
+      document.getElementById("mapViewDescription").textContent = words.mapDescription;
+      document.querySelector('.view-button[data-view="classic"]').textContent = words.plan;
+      document.querySelector('.view-button[data-view="3d"]').textContent = words.view3d;
+      document.querySelector('.view-button[data-view="street"]').textContent = words.street;
+      document.querySelector(".discover-heading h2").textContent = words.discover;
+      document.querySelector(".discover-heading p").textContent = words.discoverDescription;
+      for (const [filter, key] of [["all", "all"], ["park", "parks"], ["food", "food"], ["culture", "culture"]]) {
+        const button = document.querySelector(`.discover-filter[data-filter="${filter}"]`);
+        if (button) button.textContent = words[key];
+      }
+      const emptyPlaces = document.querySelector("#discoverItems > span");
+      if (emptyPlaces) emptyPlaces.textContent = words.nearbyEmpty;
+
+      document.querySelector('.hero-caption').textContent = language === 'de-DE' ? 'Schritt für Schritt kommen wir an.' : language === 'zh-CN' ? '一步一步，安心到达。' : 'Un pas après l’autre, on y arrive.';
+      document.getElementById('quickLanguage').value = language;
+      document.getElementById('quickLanguage').setAttribute('aria-label', words.language);
+      document.getElementById('quickTheme').setAttribute('aria-label', words.theme);
+      for (const key of ['system', 'light', 'dark']) document.querySelector(`#quickTheme option[value="${key}"]`).textContent = words[key];
+      document.getElementById("settingsTitle").textContent = words.settingsTitle;
+      document.querySelector(".settings-heading p").textContent = words.settingsDescription;
+      document.querySelector('label[for="welcomeSetting"]').textContent = words.welcomeSetting;
+      document.getElementById("languageSettingLabel").textContent = words.language;
+      document.getElementById("languageSettingHint").textContent = words.languageHint;
+      document.getElementById("themeSettingLabel").textContent = words.theme;
+      document.getElementById("themeSettingHint").textContent = words.themeHint;
+      document.querySelector('#themeSetting option[value="system"]').textContent = words.system;
+      document.querySelector('#themeSetting option[value="light"]').textContent = words.light;
+      document.querySelector('#themeSetting option[value="dark"]').textContent = words.dark;
+      document.querySelector('label[for="speechRate"]').textContent = words.speechRate;
+      document.querySelector('label[for="largeTextSetting"]').textContent = words.largeText;
+      document.querySelector('label[for="contrastSetting"]').textContent = words.contrast;
+      document.getElementById("settingsFootnote").textContent = words.footnote;
+      document.getElementById("saveSettings").textContent = words.saveSettings;
+    }
+
+    function applyColorTheme(theme = localStorage.getItem("navigueTheme") || "system") {
+      document.getElementById('quickTheme').value = theme;
+      const dark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      document.body.classList.toggle("dark-mode", dark);
+      document.getElementById("themeColorMeta").content = dark ? "#141d18" : "#f5f7f1";
     }
 
     function setAssistantMessage(title, message) {
@@ -1530,16 +1940,13 @@
 
     window.speakNavigueText = speakText;
     window.setNavigueAccountGreeting = (name) => {
-      document.getElementById("welcomeLine").textContent = name
-        ? `Bienvenue, ${name} !`
-        : "Votre compagnon de route";
-      if (!kidMode) {
-        setAssistantMessage(
-          name ? `Bonjour ${name}, je suis NaVigue.` : "Bonjour, je suis NaVigue.",
-          name
-            ? "Dis-moi où tu veux aller, ou demande-moi de répéter une consigne. On avancera tranquillement, étape par étape."
-            : "Touchez « Parler avec NaVigue » pour échanger à voix haute. Le micro ne s’active qu’à votre demande ; la reconnaissance vocale dépend de votre navigateur."
-        );
+      applyLanguageUI();
+      if (name && !kidMode) {
+        const language = uiLanguage();
+        const greeting = language === "de-DE" ? `Hallo ${name}, ich bin NaVigue.`
+          : language === "zh-CN" ? `你好，${name}，我是 NaVigue。`
+            : `Bonjour ${name}, je suis NaVigue.`;
+        setAssistantMessage(greeting, uiText("assistantMessage"));
       }
     };
 
@@ -1578,11 +1985,18 @@
         conversationRecognition = undefined;
       }
       document.getElementById("conversationButton").setAttribute("aria-pressed", "false");
-      document.getElementById("conversationButton").textContent = "Parler avec NaVigue";
+      document.getElementById("conversationButton").textContent = uiText("conversation");
     }
 
     function cleanSpokenDestination(text) {
       const normalized = text.trim().replace(/[.!?,;:]+$/g, "");
+      const language = uiLanguage();
+      if (language === "de-DE") {
+        return normalized.replace(/^(?:(?:ich möchte|ich will|bitte bring mich|navigiere mich|route|weg)\s+(?:gehen\s+)?(?:zu|zum|zur|nach|in|an)?\s*)/i, "").trim();
+      }
+      if (language === "zh-CN") {
+        return normalized.replace(/^(?:请带我去|带我去|我想去|我想前往|导航到|路线到|去)\s*/u, "").trim();
+      }
       const command = /^(?:na[v]igue[, ]*)?(?:(?:je veux|je voudrais|j['’]aimerais)\s+(?:aller|me rendre)\s+(?:a|à|au|aux|chez|vers)|emm[eè]ne[- ]moi\s+(?:a|à|au|aux|chez|vers)|conduis[- ]moi\s+(?:a|à|au|aux|chez|vers)|trouve(?:[- ]moi)?\s+(?:un )?(?:itin[eé]raire|chemin)\s+(?:vers|pour)|pour aller\s+(?:a|à|au|aux|chez|vers)|itin[eé]raire\s+(?:vers|pour)|va\s+(?:a|à|au|aux|chez|vers))\s+/i;
       const directPlace = /^(?:a|à|au|aux|chez|vers)\s+/i;
       return normalized.replace(command, "").replace(directPlace, "").trim();
@@ -1591,6 +2005,40 @@
     function handleConversationInput(rawText) {
       const text = rawText.trim();
       const normalized = text.toLocaleLowerCase("fr-FR").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[.!?,;:]/g, "");
+      const language = uiLanguage();
+      if (language === "de-DE") {
+        if (/^(stopp|stop|halt|abbrechen|tschuss|auf wiedersehen|das ist alles)$/.test(normalized)) {
+          stopConversationAfterReply = true;
+          return "Alles klar, ich höre jetzt auf. Du kannst jederzeit wieder mit mir sprechen.";
+        }
+        if (/^(danke|vielen dank|super|toll)$/.test(normalized)) return "Gern geschehen. Kann ich dir noch bei etwas helfen?";
+        if (/\b(wiederholen|noch einmal|naechster schritt|anweisung)\b/.test(normalized)) {
+          conversationAwaitingDestination = false;
+          return currentVoiceInstruction();
+        }
+        if (/^(hallo|guten tag|guten morgen|guten abend|wie gehts|wie geht es dir)$/.test(normalized)) {
+          return "Hallo! Ich bin da. Wohin möchtest du gehen?";
+        }
+        if (/^(hilfe|was kannst du|wie funktioniert das)$/.test(normalized)) {
+          conversationAwaitingDestination = true;
+          return "Sag zum Beispiel: „Ich möchte zum Louvre“ oder nenne einfach den Ort. Ich kann auch den nächsten Schritt wiederholen.";
+        }
+      } else if (language === "zh-CN") {
+        if (/^(停止|停下|取消|再见|结束对话|就这样了)$/u.test(normalized)) {
+          stopConversationAfterReply = true;
+          return "好的，我先停止聆听。你随时可以再和我说话。";
+        }
+        if (/^(谢谢|太好了|很好)$/u.test(normalized)) return "不客气。还需要我帮你做什么吗？";
+        if (/(重复|再说一次|下一步|指引)/u.test(normalized)) {
+          conversationAwaitingDestination = false;
+          return currentVoiceInstruction();
+        }
+        if (/^(你好|您好|嗨|早上好|晚上好|你好吗)$/u.test(normalized)) return "你好！我在这里陪着你。你想去哪里？";
+        if (/^(帮助|你能做什么|怎么使用)$/u.test(normalized)) {
+          conversationAwaitingDestination = true;
+          return "你可以说“带我去卢浮宫”，也可以直接说出地点名称。我还可以重复下一条路线指引。";
+        }
+      }
       if (/^(stop|arrete|arret|annule|au revoir|aurevoir|c'est tout|merci c'est tout)$/.test(normalized)) {
         stopConversationAfterReply = true;
         return "D’accord, j’arrête de t’écouter. Tu peux me reparler quand tu veux.";
@@ -1606,7 +2054,7 @@
 
       const destination = conversationAwaitingDestination ? text : cleanSpokenDestination(text);
       if (destination && destination.length > 1 && destination.length < 180
-        && !/^(aide|que peux tu faire|comment ca marche|quel temps|quelle heure)/i.test(normalized)) {
+        && !/^(aide|que peux tu faire|comment ca marche|quel temps|quelle heure|hilfe|was kannst du|wie funktioniert das|帮助|你能做什么|怎么使用)/iu.test(normalized)) {
         conversationAwaitingDestination = false;
         const destinationInput = document.getElementById("destination");
         if (kidMode) {
@@ -1626,6 +2074,8 @@
         }
         destinationInput.value = destination;
         window.setTimeout(() => document.getElementById("journeyForm").requestSubmit(), 300);
+        if (language === "de-DE") return `Alles klar, ich plane deine Route nach ${destination}. Sag mir gern, wenn ich einen Schritt wiederholen soll.`;
+        if (language === "zh-CN") return `好的，我来为你规划前往${destination}的路线。需要时可以让我重复路线指引。`;
         return `D’accord, je prépare le trajet vers ${destination}. Tu pourras me demander de répéter une étape ou de choisir un autre mode de transport.`;
       }
       if (/^(aide|que peux tu faire|comment ca marche)$/.test(normalized)) {
@@ -1633,6 +2083,8 @@
         return "Tu peux me dire, par exemple, « je veux aller au Louvre », ou simplement donner le nom d’un lieu. Je peux aussi répéter une consigne.";
       }
       conversationAwaitingDestination = true;
+      if (language === "de-DE") return "Gern. Wohin möchtest du gehen? Du kannst mir eine Adresse oder einfach den Namen eines Ortes nennen.";
+      if (language === "zh-CN") return "当然可以。你想去哪里？可以告诉我地址，也可以直接说出地点名称。";
       return "Bien sûr. Où veux-tu aller ? Tu peux me dire une adresse, un lieu, ou simplement le nom de ta destination.";
     }
 
@@ -1655,11 +2107,12 @@
       conversationRecognition.continuous = false;
       conversationRecognition.maxAlternatives = 1;
       conversationRecognition.onresult = (event) => {
+        const language = uiLanguage();
         const userText = event.results?.[0]?.[0]?.transcript || "";
         if (!userText.trim()) return;
         conversationWaitingForSpeech = true;
         const reply = handleConversationInput(userText);
-        setAssistantMessage("NaVigue te répond", reply);
+        setAssistantMessage(language === "de-DE" ? "NaVigue antwortet" : language === "zh-CN" ? "NaVigue 正在回答" : "NaVigue te répond", reply);
         const continueConversation = () => {
           conversationWaitingForSpeech = false;
           if (stopConversationAfterReply) {
@@ -1685,9 +2138,14 @@
         if (activeConversation && !conversationWaitingForSpeech) beginConversationListening();
       };
       document.getElementById("conversationButton").setAttribute("aria-pressed", "true");
-      document.getElementById("conversationButton").textContent = "Arrêter la conversation";
-      setAssistantMessage("NaVigue est à l’écoute.", "Le navigateur peut demander l’autorisation du micro. Tu peux arrêter la conversation à tout moment.");
-      if (!speakText("Bonjour, je suis NaVigue. Où aimerais-tu aller ?", () => beginConversationListening())) {
+      document.getElementById("conversationButton").textContent = uiText("stopConversation");
+      const greeting = uiLanguage() === "de-DE" ? "Hallo, ich bin NaVigue. Wohin möchtest du gehen?"
+        : uiLanguage() === "zh-CN" ? "你好，我是 NaVigue。你想去哪里？"
+          : "Bonjour, je suis NaVigue. Où aimerais-tu aller ?";
+      setAssistantMessage(uiLanguage() === "de-DE" ? "NaVigue hört zu" : uiLanguage() === "zh-CN" ? "NaVigue 正在聆听" : "NaVigue est à l’écoute.",
+        uiLanguage() === "de-DE" ? "Der Browser fragt möglicherweise nach Mikrofonzugriff. Du kannst das Gespräch jederzeit beenden."
+          : uiLanguage() === "zh-CN" ? "浏览器可能会请求麦克风权限。你可以随时结束对话。" : "Le navigateur peut demander l’autorisation du micro. Tu peux arrêter la conversation à tout moment.");
+      if (!speakText(greeting, () => beginConversationListening())) {
         beginConversationListening();
       }
     }
@@ -2036,6 +2494,7 @@
       const dialog = document.getElementById("settingsDialog");
       document.getElementById("welcomeSetting").checked = localStorage.getItem("navigueVoiceEnabled") === "true";
       document.getElementById("languageSetting").value = localStorage.getItem("navigueLanguage") || "fr-FR";
+      document.getElementById("themeSetting").value = localStorage.getItem("navigueTheme") || "system";
       document.getElementById("speechRate").value = localStorage.getItem("navigueSpeechRate") || "0.85";
       document.getElementById("largeTextSetting").checked = localStorage.getItem("navigueLargeText") === "true";
       document.getElementById("contrastSetting").checked = localStorage.getItem("navigueHighContrast") === "true";
@@ -2053,23 +2512,22 @@
       const voiceEnabled = document.getElementById("welcomeSetting").checked;
       localStorage.setItem("navigueVoiceEnabled", String(voiceEnabled));
       localStorage.setItem("navigueLanguage", document.getElementById("languageSetting").value);
+      localStorage.setItem("navigueTheme", document.getElementById("themeSetting").value);
       localStorage.setItem("navigueSpeechRate", document.getElementById("speechRate").value);
       localStorage.setItem("navigueLargeText", String(document.getElementById("largeTextSetting").checked));
       localStorage.setItem("navigueHighContrast", String(document.getElementById("contrastSetting").checked));
       document.body.classList.toggle("large-text", document.getElementById("largeTextSetting").checked);
       document.body.classList.toggle("high-contrast", document.getElementById("contrastSetting").checked);
-      document.getElementById("assistantButton").textContent = voiceEnabled ? "Désactiver la voix" : "Activer la voix";
-      document.getElementById("assistantTitle").textContent = voiceEnabled ? "Votre assistant vocal est prêt." : "Bonjour, je suis NaVigue.";
-      document.getElementById("assistantMessage").textContent = voiceEnabled
-        ? "L’accueil vocal est activé pour vos prochaines visites. Touchez le haut-parleur pour entendre une consigne."
-        : "La voix est désactivée. Le micro ne sera demandé que si vous lancez la dictée.";
+      applyColorTheme(document.getElementById("themeSetting").value);
+      applyLanguageUI(document.getElementById("languageSetting").value);
       document.getElementById("settingsDialog").close();
       if (voiceEnabled && !voiceWasEnabled) speakText(welcomeMessage());
       else if (!voiceEnabled) {
         stopConversation();
         if ("speechSynthesis" in window) window.speechSynthesis.cancel();
       }
-      showToast("Vos préférences ont été enregistrées sur cet appareil.");
+      showToast(uiLanguage() === "de-DE" ? "Einstellungen auf diesem Gerät gespeichert."
+        : uiLanguage() === "zh-CN" ? "偏好设置已保存在此设备上。" : "Vos préférences ont été enregistrées sur cet appareil.");
     });
 
     document.getElementById("alternativeButton").addEventListener("click", (event) => {
@@ -2129,7 +2587,7 @@
       document.getElementById("familySafetyNote").classList.toggle("is-visible", enabled);
       document.getElementById("childDestinations").classList.toggle("is-visible", enabled);
       document.getElementById("pageTitle").textContent = enabled ? `On part à l’aventure${childName ? `, ${childName}` : ""} ?` : "On y va ensemble\u00a0?";
-      document.querySelector(".intro > div > p:last-child").textContent = enabled
+      document.querySelector(".intro-copy > p:last-of-type").textContent = enabled
         ? "Choisis une destination avec un adulte : NaVigue vous montre le chemin."
         : "Une destination, des explications claires. NaVigue s’occupe du chemin.";
       document.querySelector(".journey-form .form-head h2").textContent = enabled ? "Où veux-tu aller ?" : "Où souhaitez-vous aller\u00a0?";
@@ -2148,6 +2606,7 @@
       }
       localStorage.setItem("navigueKidMode", String(enabled));
       window.NavigueFamilyAuth && (window.NavigueFamilyAuth.kidMode = enabled);
+      applyLanguageUI();
       if (announce) showToast(enabled ? "Mode enfant activé. Utilise NaVigue avec un adulte." : "Mode enfant désactivé.");
     }
 
@@ -2226,13 +2685,27 @@
     document.getElementById("preferences").classList.toggle("expanded", savedAccessibleRoute);
     document.body.classList.toggle("large-text", localStorage.getItem("navigueLargeText") === "true");
     document.body.classList.toggle("high-contrast", localStorage.getItem("navigueHighContrast") === "true");
+    document.getElementById('quickLanguage').addEventListener('change', (event) => {
+      localStorage.setItem('navigueLanguage', event.target.value);
+      document.getElementById('languageSetting').value = event.target.value;
+      applyLanguageUI(event.target.value);
+    });
+    document.getElementById('quickTheme').addEventListener('change', (event) => {
+      localStorage.setItem('navigueTheme', event.target.value);
+      document.getElementById('themeSetting').value = event.target.value;
+      applyColorTheme(event.target.value);
+    });
+    applyColorTheme();
     if (localStorage.getItem("navigueVoiceEnabled") === "true") {
-      document.getElementById("assistantButton").textContent = "Désactiver la voix";
       document.getElementById("assistantTitle").textContent = "Votre assistant vocal est prêt.";
       document.getElementById("assistantMessage").textContent = "L’accueil vocal est activé. Selon les règles du navigateur, vous devrez peut-être toucher la page avant d’entendre la voix.";
       speakText(welcomeMessage());
     }
     applyKidsMode(false, false);
+    applyLanguageUI();
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => {
+      if ((localStorage.getItem("navigueTheme") || "system") === "system") applyColorTheme("system");
+    });
   </script>
   <script src="./family-auth.js?v=3"></script>
 </body>
