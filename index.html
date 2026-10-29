@@ -1132,6 +1132,7 @@
     async function geocodeAddress(address) {
       const query = address.trim();
       const cacheKey = query.toLocaleLowerCase();
+      if (window.NavigueAddressPlaces?.has(cacheKey)) return window.NavigueAddressPlaces.get(cacheKey);
       if (geocodeCache.has(cacheKey)) return geocodeCache.get(cacheKey);
       const params = new URLSearchParams({ q: query, limit: "1", lang: "fr" });
       const result = await requestJson(`https://photon.komoot.io/api/?${params}`, "La recherche d’adresse");
@@ -2844,5 +2845,7 @@
   <script src="./outing.js?v=1"></script>
   <script src="./groups-core.js?v=1"></script>
   <script src="./groups.js?v=1"></script>
+  <link rel="stylesheet" href="./address-suggestions.css?v=1">
+  <script src="./address-suggestions.js?v=1"></script>
 </body>
 </html>

@@ -97,6 +97,8 @@
   const routeUrl = points => `https://routing.openstreetmap.de/routed-foot/route/v1/foot/${points.map(p => `${p.lon},${p.lat}`).join(';')}?overview=full&geometries=geojson&steps=true`;
   async function route(points, signal) { const data = await get(routeUrl(points), signal); const result = data.routes?.[0]; if (data.code !== 'Ok' || !result?.geometry?.coordinates?.length || !Number.isFinite(result.duration)) throw new Error('route'); return result; }
   async function geocode(text, signal) {
+    const chosen = window.NavigueAddressPlaces?.get(text.trim().toLocaleLowerCase());
+    if (chosen) return chosen;
     const params = new URLSearchParams({q: text, limit: '1', lang: bridge.language().slice(0,2)});
     const data = await get(`https://photon.komoot.io/api/?${params}`, signal), feature = data.features?.[0];
     if (!feature) throw new Error('address');

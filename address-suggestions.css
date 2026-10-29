@@ -1,0 +1,8 @@
+.address-autocomplete{position:relative;flex:1;min-width:0;width:100%}
+.address-autocomplete input{width:100%;box-sizing:border-box}
+.address-options{position:absolute;z-index:100;top:calc(100% + 8px);left:0;right:0;min-width:0;max-height:280px;overflow:auto;background:var(--surface,#fff);color:var(--ink,#164f44);border:1px solid #8caa9b;border-radius:14px;box-shadow:0 12px 28px #163e3426}
+.address-options[hidden]{display:none}
+.address-options [role=option]{padding:12px 14px;cursor:pointer;font-size:14px;line-height:1.45;overflow-wrap:anywhere;border-bottom:1px solid #8caa9b33}
+.address-options [role=option]:hover,.address-options [aria-selected=true]{background:#dcefdc;color:#164f44}
+.address-status{position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden}
+.dark-mode .address-options{background:#18392f;color:#f0f5ed}
