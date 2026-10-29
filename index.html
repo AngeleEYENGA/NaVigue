@@ -225,7 +225,7 @@
     .external-route { display: none; margin: 0 0 12px; border: 1px solid #dfe9d7; border-radius: 9px; padding: 10px; background: #f3f7ef; font-size: 11px; line-height: 1.5; }
     .external-route.is-visible { display: block; }
     .external-route a { display: inline-block; margin-top: 6px; color: var(--green); font-weight: 750; }
-    .step-list { list-style: none; padding: 0; margin: 17px 0 13px; }
+    .step-list { max-height: 520px; overflow-y: auto; list-style: none; padding: 0; margin: 17px 0 13px; }
     .step { display: grid; grid-template-columns: 28px 1fr; gap: 11px; position: relative; padding-bottom: 17px; }
     .step:not(:last-child)::after { content: ""; position: absolute; top: 27px; bottom: 1px; left: 13px; border-left: 1px dashed #cbd8cc; }
     .step-icon { width: 27px; height: 27px; display: grid; place-items: center; background: #edf4e9; border-radius: 50%; color: var(--green); }
@@ -1031,6 +1031,8 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="./supabase-config.js?v=2"></script>
+  <script src="./navigation-core.js?v=1"></script>
+  <script src="./transit-directions.js?v=1"></script>
   <script>
     const toast = document.getElementById("toast");
     let toastTimer;
@@ -1390,38 +1392,11 @@
       if (routeCoordinates.length) {
         leafletMap.fitBounds(window.L.latLngBounds(routeCoordinates), { padding: [55, 55], maxZoom: 16 });
       }
-      const list = document.getElementById("stepList");
-      list.replaceChildren();
-      itinerary.legs.slice(0, 8).forEach((leg, index) => {
-        const item = document.createElement("li");
-        item.className = `step${index === 0 ? " is-current" : ""}`;
-        const icon = document.createElement("span");
-        icon.className = "step-icon";
-        icon.textContent = leg.mode === "WALK" ? "🚶" : (leg.routeShortName || transitModeLabel(leg.mode).slice(0, 1).toUpperCase());
-        const content = document.createElement("div");
-        const heading = document.createElement("strong");
-        const mode = transitModeLabel(leg.mode);
-        const line = leg.routeShortName ? ` · ligne ${leg.routeShortName}` : "";
-        heading.textContent = leg.mode === "WALK"
-          ? `${kidMode ? "Marche" : "Marchez"} jusqu’à ${leg.to?.name || "votre prochain arrêt"}`
-          : `${kidMode ? "Prends" : "Prenez"} le ${mode}${line}`;
-        const detail = document.createElement("small");
-        const from = leg.from?.name || "Départ";
-        const to = leg.to?.name || "Arrivée";
-        const times = [formatTransitTime(leg.startTime), formatTransitTime(leg.endTime)].filter(Boolean).join(" – ");
-        const headsign = leg.headsign ? ` · direction ${leg.headsign}` : "";
-        const distance = leg.mode === "WALK" && Number.isFinite(leg.distance) ? ` · ${formatDistance(leg.distance)}` : "";
-        detail.textContent = `${from} → ${to}${headsign}${times ? ` · ${times}` : ""}${distance}`;
-        content.append(heading, detail);
-        item.append(icon, content);
-        list.append(item);
+      const generation = routeGeneration;
+      window.NavigueTransitDirections.render(itinerary, {
+        destination: document.getElementById('destination').value,
+        isCurrent: () => generation === routeGeneration && activeRoute?.itinerary === itinerary
       });
-      if (itinerary.legs.length > 8) {
-        const rest = document.createElement("li");
-        rest.className = "step";
-        rest.textContent = `… et ${itinerary.legs.length - 8} autres étapes`;
-        list.append(rest);
-      }
       showJourneyAnimation("transit");
     }
 
@@ -1430,7 +1405,7 @@
         fromPlace: `${origin.lat},${origin.lon}`,
         toPlace: `${destination.lat},${destination.lon}`,
         time: new Date().toISOString(),
-        numItineraries: "5"
+        numItineraries: "5", preTransitModes: "WALK", postTransitModes: "WALK", detailedLegs: "true", detailedTransfers: "true", useRoutedTransfers: "true"
       });
       const result = await requestJson(`https://api.transitous.org/api/v6/plan?${params}`, "Le calcul des transports en commun");
       if (generation !== routeGeneration) return null;

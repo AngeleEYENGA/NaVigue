@@ -40,6 +40,8 @@ La conversation distingue les salutations, remerciements, demandes d’aide et d
 
 « À découvrir en chemin » recherche dans un rayon de 5 km autour de la destination : parcs, restauration, culture, hôtels et autres hébergements, motels, bowling et activités (cinéma, piscine, sports, parcs de loisirs, etc.). La disponibilité dépend des lieux référencés dans OpenStreetMap et du service Photon. Une panne du service est signalée séparément d’une absence de résultats.
 
+Les portions à pied des trajets en transports demandent les tracés et les instructions détaillés, y compris les correspondances. Les changements de direction sont calculés sur le tracé lorsque le fournisseur renvoie uniquement « CONTINUE ». Les segments droits consécutifs sont regroupés ; les escaliers et les virages sont conservés. Les noms de rues manquants sont recherchés par identifiant de voie dans OpenStreetMap via Overpass, sans bloquer l’affichage en cas de panne. Les rues sans nom et les numéros de sortie inconnus ne sont pas inventés. Sans instructions disponibles, la portion est signalée comme non détaillée. Vérification : `node tests/transit-directions.cjs`.
+
 Vérification des régressions : `node tests/regression.cjs` (aucune dépendance à installer). Les tests simulent les transcriptions et réponses cartographiques ; ils ne vérifient pas la capture réelle du microphone.
 
 ## Organiser ma sortie — première version
