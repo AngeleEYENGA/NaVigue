@@ -11,6 +11,7 @@ const context = vm.createContext({
   stopConversationAfterReply: false, kidMode: false,
   uiLanguage: () => context.language,
   currentVoiceInstruction: () => 'Instruction courante',
+  handleVoiceNavigation: () => null,
   document: { getElementById: id => id === 'destination' ? destination : { requestSubmit: () => submitted++ } },
   window: { setTimeout: fn => fn(), NavigueFamilyAuth: { childFavorites: [{ label: 'Papa', address: '12 rue Exemple' }] } }
 });

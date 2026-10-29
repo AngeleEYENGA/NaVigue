@@ -1,11 +1,11 @@
-const CACHE_NAME = "navigue-app-shell-v12";
+const CACHE_NAME = "navigue-app-shell-v13";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./navigation-core.js?v=1",
-  "./transit-directions.js?v=1",
   "./address-suggestions.css?v=1",
   "./address-suggestions.js?v=1",
+  "./navigation-core.js?v=2",
+  "./transit-directions.js?v=1",
   "./icon.svg",
   "./outing.css?v=1",
   "./groups.css?v=1",

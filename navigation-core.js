@@ -60,7 +60,7 @@
         const steps=walkingSteps(leg);
         if(steps.length){
           const exitWord=['Prenez la sortie','Take exit','Toma la salida','Ausgang nehmen','出口'],around=['Faites demi-tour','Turn around','Da la vuelta','Umkehren','掉头'];
-          steps.forEach(step=>result.push({kind:'walk',title:`${step.exit?`${exitWord[Math.max(0,languages.indexOf(lang))]} ${step.exit}`:step.relativeDirection==='UTURN'?around[Math.max(0,languages.indexOf(lang))]:turn(step.relativeDirection,lang)}${step.streetName?` · ${step.streetName}`:''}`,detail:`${Math.round(step.distance)} m · ${phase}`,target:step.target,leg:index}));
+          steps.forEach(step=>{const points=decode(step.polyline?.points,step.polyline?.precision||6);result.push({kind:'walk',title:`${step.exit?`${exitWord[Math.max(0,languages.indexOf(lang))]} ${step.exit}`:step.relativeDirection==='UTURN'?around[Math.max(0,languages.indexOf(lang))]:turn(step.relativeDirection,lang)}${step.streetName?` · ${step.streetName}`:''}`,detail:`${Math.round(step.distance)} m · ${phase}`,distance:step.distance,start:points.length?{lat:points[0][0],lon:points[0][1]}:null,target:step.target,leg:index});});
         }
         else result.push({kind:'walk',title:phase,detail:`${Math.round(leg.distance||0)} m · ${Math.ceil((leg.duration||0)/60)} min · ${['Consignes détaillées non fournies pour cette portion','Detailed directions unavailable for this section','Indicaciones detalladas no disponibles en este tramo','Keine Detailanweisungen für diesen Abschnitt','此路段暂无详细指引'][Math.max(0,languages.indexOf(lang))]}`,target:endOf(leg.legGeometry,leg.to),leg:index});
       }else{
@@ -73,6 +73,10 @@
     });
     const last=legs.at(-1);result.push({kind:'arrive',title:word('arrive',lang),detail:!last?.to?.name||last.to.name==='END'?(labels.destination||word('destination',lang)):last.to.name,target:point(last?.to),leg:legs.length});return result;
   }
-  function canAdvance(step,position,accuracy,distance){return ['walk','arrive'].includes(step?.kind)&&step.target&&Number.isFinite(accuracy)&&accuracy<=50&&distance(position,step.target)<=Math.max(12,Math.min(25,accuracy));}
+  function canAdvance(step,position,accuracy,distance){
+    if(!['walk','arrive'].includes(step?.kind)||!step.target||!Number.isFinite(accuracy)||accuracy>50)return false;
+    if(step.kind==='walk'&&step.start){const span=distance(step.start,step.target);if(span<Math.max(8,accuracy*1.5)||distance(position,step.start)<span*.6)return false;}
+    return distance(position,step.target)<=Math.max(5,Math.min(12,accuracy));
+  }
   const api={decode,transitSteps,walkingSteps,fillStreetNames,canAdvance,turn};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.NavigueNavigationCore=api;
 })(typeof window!=='undefined'?window:globalThis);

@@ -225,7 +225,7 @@
     .external-route { display: none; margin: 0 0 12px; border: 1px solid #dfe9d7; border-radius: 9px; padding: 10px; background: #f3f7ef; font-size: 11px; line-height: 1.5; }
     .external-route.is-visible { display: block; }
     .external-route a { display: inline-block; margin-top: 6px; color: var(--green); font-weight: 750; }
-    .step-list { max-height: 520px; overflow-y: auto; list-style: none; padding: 0; margin: 17px 0 13px; }
+    .step-list { list-style: none; padding: 0; margin: 17px 0 13px; }
     .step { display: grid; grid-template-columns: 28px 1fr; gap: 11px; position: relative; padding-bottom: 17px; }
     .step:not(:last-child)::after { content: ""; position: absolute; top: 27px; bottom: 1px; left: 13px; border-left: 1px dashed #cbd8cc; }
     .step-icon { width: 27px; height: 27px; display: grid; place-items: center; background: #edf4e9; border-radius: 50%; color: var(--green); }
@@ -556,6 +556,11 @@
       header #installButton { grid-column: 1 / -1; grid-row: 3; }
       header .header-action { font-size: 12px; }
     }
+    .step-list { max-height: 420px; overflow-y: auto; padding: 4px; }
+    .step.is-done { opacity: .55; }
+    .guidance-progress { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .guidance-progress button { flex: 1; min-height: 44px; font-size: 12px; }
+    .route-actions { flex-wrap: wrap; }
   </style>
 </head>
 <body>
@@ -725,10 +730,13 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 3 14 9-14 9V3Z"/></svg>
                 Démarrer le guidage
               </button>
+              <button class="secondary-button" id="stopGuideButton" type="button" disabled>Arrêter</button>
               <button class="voice-button" id="voiceButton" type="button" aria-label="Lire la prochaine consigne à voix haute" title="Lire la consigne à voix haute">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5ZM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>
               </button>
             </div>
+            <button class="secondary-button" id="manualGuideButton" type="button" hidden>Suivre les étapes sans GPS</button>
+            <div class="guidance-progress"><button class="secondary-button" id="previousGuideStep" type="button" disabled>Étape précédente</button><button class="secondary-button" id="nextGuideStep" type="button" disabled>Étape suivante</button></div>
           </section>
 
           <section class="card preferences" id="preferences" aria-label="Préférences d’accessibilité">
@@ -1031,7 +1039,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="./supabase-config.js?v=2"></script>
-  <script src="./navigation-core.js?v=1"></script>
+  <script src="./navigation-core.js?v=2"></script>
   <script src="./transit-directions.js?v=1"></script>
   <script>
     const toast = document.getElementById("toast");
@@ -1044,6 +1052,9 @@
     let userMarker;
     let routeCoordinates = [];
     let activeRoute = null;
+    let guideWaypoints = [], resolvedDestinationText = '';
+    let manualGuidance = false;
+    let guidanceSteps = [], guidanceIndex = 0, guidanceState = 'idle', guidanceEpoch = 0;
     let currentCoordinates = null;
     let destinationCoordinates = null;
     let watchId = null;
@@ -1060,6 +1071,7 @@
     let pendingConversationDestination = "";
     let conversationRestartTimer;
     let stopConversationAfterReply = false;
+    let voiceRouteRequested = false, voiceRoutePending = false, speechEpoch = 0;
     const geocodeCache = new Map();
     function showToast(message) {
       toast.textContent = message;
@@ -1188,23 +1200,66 @@
       }
     }
 
-    function updateGuidanceButton(isActive) {
-      const button = document.getElementById("startButton");
-      button.innerHTML = isActive
-        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>Mettre en pause'
-        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 3 14 9-14 9V3Z"/></svg>Démarrer le guidage';
-      button.setAttribute("aria-label", isActive ? "Mettre en pause le guidage" : "Démarrer le guidage");
+    const GUIDE_COPY = {
+      'fr-FR': ['Démarrer le guidage','Mettre en pause','Reprendre','Arrêter','Étape précédente','Étape suivante','Je suis monté·e','Je suis descendu·e','Passer à l’embarquement','Guidage en pause.','Guidage arrêté. Le trajet reste consultable.','Guidage actif.','Demande de position en cours…','Vous êtes arrivé·e.'],
+      'en-US': ['Start navigation','Pause','Resume','Stop','Previous step','Next step','I have boarded','I have got off','Go to boarding','Navigation paused.','Navigation stopped. The route remains available.','Navigation active.','Requesting your location…','You have arrived.'],
+      'es-ES': ['Iniciar navegación','Pausar','Reanudar','Detener','Paso anterior','Paso siguiente','Ya he subido','Ya he bajado','Ir al embarque','Navegación en pausa.','Navegación detenida. La ruta sigue disponible.','Navegación activa.','Solicitando ubicación…','Has llegado.'],
+      'de-DE': ['Navigation starten','Pause','Fortsetzen','Beenden','Vorheriger Schritt','Nächster Schritt','Ich bin eingestiegen','Ich bin ausgestiegen','Zum Einsteigen','Navigation pausiert.','Navigation beendet. Die Route bleibt sichtbar.','Navigation aktiv.','Standort wird angefragt…','Du bist angekommen.'],
+      'zh-CN': ['开始导航','暂停','继续','停止','上一步','下一步','我已上车','我已下车','前往上车步骤','导航已暂停。','导航已停止，仍可查看路线。','导航已开始。','正在请求位置……','已到达。']
+    };
+    const manualCopy={
+      'fr-FR':['Suivre les étapes sans GPS','Guidage manuel : avancez avec « Étape suivante ».','GPS indisponible : le parcours reste utilisable avec les étapes manuelles.','Reprendre après la pause'],
+      'en-US':['Follow steps without GPS','Manual navigation: use Next step.','GPS unavailable: you can still follow the steps manually.','Continue after the break'],
+      'es-ES':['Seguir pasos sin GPS','Navegación manual: usa Paso siguiente.','GPS no disponible: puedes seguir los pasos manualmente.','Continuar tras la pausa'],
+      'de-DE':['Schritte ohne GPS folgen','Manuelle Navigation: Nächster Schritt nutzen.','GPS nicht verfügbar: Schritte sind manuell nutzbar.','Nach der Pause fortsetzen'],
+      'zh-CN':['无GPS按步骤导航','手动导航：请使用下一步。','GPS不可用，仍可手动跟随路线步骤。','休息后继续']
+    };for(const [lang,values]of Object.entries(manualCopy))GUIDE_COPY[lang].push(...values);
+    const guideText = index => (GUIDE_COPY[localStorage.getItem('navigueLanguage') || 'fr-FR'] || GUIDE_COPY['fr-FR'])[index];
+    function updateGuidanceButton() {
+      const button = document.getElementById('startButton');
+      button.textContent = guideText(active ? 1 : guidanceState === 'paused' ? 2 : 0);
+      button.setAttribute('aria-label', button.textContent);
+      button.disabled = guidanceState === 'starting' || !activeRoute;
+      document.getElementById('stopGuideButton').textContent = guideText(3);
+      document.getElementById('stopGuideButton').disabled = !['starting','running','paused'].includes(guidanceState);
+      document.getElementById('previousGuideStep').textContent = guideText(4);
+      document.getElementById('previousGuideStep').disabled = !active || guidanceIndex === 0;
+      document.getElementById('manualGuideButton').hidden=!activeRoute||active||guidanceState==='starting';
+      document.getElementById('manualGuideButton').textContent=guideText(14);
+      const kind = guidanceSteps[guidanceIndex]?.kind;
+      document.getElementById('nextGuideStep').textContent = guideText(kind === 'board' ? 6 : kind === 'ride' ? 7 : kind === 'wait' ? 8 : kind === 'pause' ? 17 : 5);
+      document.getElementById('nextGuideStep').disabled = !active;
     }
-
+    function renderGuidanceSteps() {
+      const list = document.getElementById('stepList');list.replaceChildren();
+      guidanceSteps.forEach((step,index) => {
+        const item = document.createElement('li');item.className = `step${index === guidanceIndex ? ' is-current' : index < guidanceIndex ? ' is-done' : ''}`;
+        if(index === guidanceIndex)item.setAttribute('aria-current','step');
+        const icon=document.createElement('span');icon.className='step-icon';icon.textContent=step.kind==='walk'?'🚶':step.kind==='board'?'🚇':step.kind==='wait'?'◷':step.kind==='arrive'?'✓':String(index+1);
+        const content=document.createElement('div'),title=document.createElement('strong'),detail=document.createElement('small');title.textContent=step.title;detail.textContent=step.detail;content.append(title,detail);item.append(icon,content);list.append(item);
+      });
+      updateGuidanceButton();
+    }
+    function stopGuidance(state='stopped',reset=true) {
+      guidanceEpoch++;if(guidanceState==='starting'||rerouting)routeGeneration++;
+      active=false;rerouting=false;guidanceState=state;
+      if(watchId!==null)navigator.geolocation.clearWatch(watchId);watchId=null;
+      if('speechSynthesis' in window)window.speechSynthesis.cancel();
+      document.getElementById('mapCard').classList.remove('is-guiding');
+      if(reset){guidanceIndex=0;manualGuidance=false;}
+      if(guidanceSteps.length)renderGuidanceSteps();else updateGuidanceButton();
+    }
+    function advanceGuidance(delta=1, announce=true) {
+      if(!active)return;
+      if(delta>0&&guidanceSteps[guidanceIndex]?.kind==='pause'){guideWaypoints.shift();if(activeRoute)activeRoute.via=[...guideWaypoints];}
+      if(guidanceIndex+delta>=guidanceSteps.length){stopGuidance('arrived',false);setRouteStatus(guideText(13));if(announce&&localStorage.getItem('navigueVoiceEnabled')==='true')speakText(guideText(13));return;}
+      guidanceIndex=Math.max(0,guidanceIndex+delta);renderGuidanceSteps();
+      if(announce&&localStorage.getItem('navigueVoiceEnabled')==='true')speakText(currentVoiceInstruction());
+    }
     function nearestRouteDistance(point) {
-      if (!routeCoordinates.length) return Infinity;
-      let nearest = Infinity;
-      for (let index = 0; index < routeCoordinates.length; index += 5) {
-        const [lat, lon] = routeCoordinates[index];
-        nearest = Math.min(nearest, distanceBetween(point, { lat, lon }));
-        if (nearest < 25) return nearest;
-      }
-      return nearest;
+      if(!routeCoordinates.length)return Infinity;
+      if(window.NavigueOutingCore)return window.NavigueOutingCore.routeProximity(point,routeCoordinates.map(([lat,lon])=>[lon,lat])).distance;
+      return Math.min(...routeCoordinates.map(([lat,lon])=>distanceBetween(point,{lat,lon})));
     }
 
     async function rerouteFrom(point) {
@@ -1217,9 +1272,12 @@
       }
       try {
         currentCoordinates = point;
-        await calculateRoute(point, destinationCoordinates, selectedMode);
+        const token=guidanceEpoch;
+        const result=await calculateRoute(point, destinationCoordinates, selectedMode);
+        if(token!==guidanceEpoch||!active||!result)return;
         document.getElementById("origin").value = "Ma position actuelle";
         setRouteStatus("Nouvel itinéraire calculé depuis votre position.");
+        if(localStorage.getItem('navigueVoiceEnabled')==='true')speakText(currentVoiceInstruction());
       } catch (error) {
         setRouteStatus(error.message, true);
       } finally {
@@ -1228,14 +1286,12 @@
     }
 
     function handlePositionUpdate(position) {
-      const point = { lat: position.coords.latitude, lon: position.coords.longitude };
-      currentCoordinates = point;
-      updateUserMarker(point);
-      if (active && !rerouting && Date.now() - lastRerouteAt > 15000 && nearestRouteDistance(point) > 65) {
-        rerouteFrom(point);
-      }
+      if(!active || Date.now()-position.timestamp>30000)return;
+      const point={lat:position.coords.latitude,lon:position.coords.longitude};currentCoordinates=point;updateUserMarker(point);
+      const step=guidanceSteps[guidanceIndex];
+      if(window.NavigueNavigationCore.canAdvance(step,point,position.coords.accuracy,distanceBetween)){advanceGuidance();return;}
+      if((selectedMode!=='transit'||step?.kind==='walk')&&!rerouting&&Date.now()-lastRerouteAt>15000&&nearestRouteDistance(point)>100&&position.coords.accuracy<=50)rerouteFrom(point);
     }
-
     function updateStreetViewLink(point) {
       const mapCard = document.getElementById("mapCard");
       const frame = document.getElementById("streetViewFrame");
@@ -1293,35 +1349,10 @@
     }
 
     function renderRealSteps(route) {
-      const steps = route.legs.flatMap((leg) => leg.steps || []).filter((step) => step.maneuver?.type === "arrive" || (step.distance || 0) > 5);
-      if (steps.length === 0) throw new Error("Le calculateur n’a pas renvoyé d’étapes détaillées pour cet itinéraire.");
-      const visibleSteps = steps.slice(0, 7);
-      const list = document.getElementById("stepList");
-      list.replaceChildren();
-      visibleSteps.forEach((step, index) => {
-        const item = document.createElement("li");
-        item.className = `step${index === 0 ? " is-current" : ""}`;
-        const icon = document.createElement("span");
-        icon.className = "step-icon";
-        icon.textContent = index === 0 ? "●" : index === visibleSteps.length - 1 ? "✓" : "➜";
-        const content = document.createElement("div");
-        const title = document.createElement("strong");
-        title.textContent = kidMode
-          ? maneuverTitle(step, index).replace(/^Continuez/, "Continue").replace(/^Tournez/, "Tourne").replace(/^Prenez/, "Prends")
-          : maneuverTitle(step, index);
-        const detail = document.createElement("small");
-        const roadName = step.name ? ` sur ${step.name}` : "";
-        detail.textContent = `${formatDistance(step.distance || 0)}${roadName}`;
-        content.append(title, detail);
-        item.append(icon, content);
-        list.append(item);
-      });
-      if (steps.length > visibleSteps.length) {
-        const rest = document.createElement("li");
-        rest.className = "step";
-        rest.innerHTML = "<span class=\"step-icon\">…</span><div><strong>La suite du trajet</strong><small>Continuez à suivre les prochaines consignes.</small></div>";
-        list.append(rest);
-      }
+      const steps=route.legs.flatMap((leg,legIndex)=>(leg.steps||[]).map(step=>({...step,legIndex}))).filter(step=>step.maneuver?.type==='arrive'||(step.distance||0)>0);
+      if(!steps.length)throw new Error('Le calculateur n’a pas renvoyé de consignes.');
+      guidanceSteps=steps.map((step,index)=>{const coordinates=step.geometry?.coordinates||[],last=coordinates.at(-1)||step.maneuver?.location;return {kind:step.maneuver?.type==='arrive'?(step.legIndex<route.legs.length-1?'pause':'arrive'):'walk',title:step.maneuver?.type==='arrive'&&step.legIndex<route.legs.length-1?`Pause · ${guideWaypoints[step.legIndex]?.name||'étape'}`:maneuverTitle(step,index),detail:`${formatDistance(step.distance||0)}${step.name?` · ${step.name}`:''}`,target:last?{lon:last[0],lat:last[1]}:null};});
+      guidanceIndex=0;renderGuidanceSteps();
     }
 
     function decodePolyline6(encoded) {
@@ -1393,10 +1424,7 @@
         leafletMap.fitBounds(window.L.latLngBounds(routeCoordinates), { padding: [55, 55], maxZoom: 16 });
       }
       const generation = routeGeneration;
-      window.NavigueTransitDirections.render(itinerary, {
-        destination: document.getElementById('destination').value,
-        isCurrent: () => generation === routeGeneration && activeRoute?.itinerary === itinerary
-      });
+      window.NavigueTransitDirections.render(itinerary, {destination:document.getElementById('destination').value,isCurrent:()=>generation===routeGeneration&&activeRoute?.itinerary===itinerary&&!active,onSteps(steps){guidanceSteps=steps;guidanceIndex=0;renderGuidanceSteps();}});
       showJourneyAnimation("transit");
     }
 
@@ -1464,7 +1492,7 @@
         throw new Error("La carte n’est pas disponible. Vérifiez votre connexion et actualisez la page.");
       }
       const service = mode === "walk" ? "routed-foot/route/v1/foot" : mode === "bike" ? "routed-bike/route/v1/driving" : "routed-car/route/v1/driving";
-      const coords = `${origin.lon},${origin.lat};${destination.lon},${destination.lat}`;
+      const coords = [origin,...guideWaypoints,destination].map(point=>`${point.lon},${point.lat}`).join(";");
       const params = new URLSearchParams({ overview: "full", geometries: "geojson", steps: "true", alternatives: "true" });
       const payload = await requestJson(`https://routing.openstreetmap.de/${service}/${coords}?${params}`, "Le calcul d’itinéraire");
       if (generation !== routeGeneration) return null;
@@ -1473,7 +1501,7 @@
       }
       const routes = payload.routes;
       if (poiLayer) poiLayer.clearLayers();
-      activeRoute = { origin, destination, mode, routes, routeIndex: 0, route: routes[0] };
+      activeRoute = { origin, destination, mode, via: [...guideWaypoints], routes, routeIndex: 0, route: routes[0] };
       showRouteOption(activeRoute.route, origin, destination, mode);
       const alternativeButton = document.getElementById("alternativeButton");
       alternativeButton.disabled = routes.length < 2;
@@ -1482,6 +1510,8 @@
     }
 
     async function findRoute({ originOverride, destinationOverride } = {}) {
+      stopGuidance();
+      guideWaypoints=[];
       const generation = ++routeGeneration;
       const mode = selectedMode;
       const destinationText = document.getElementById("destination").value.trim();
@@ -1491,6 +1521,7 @@
         throw new Error("Indiquez une destination pour préparer votre trajet.");
       }
       activeRoute = null;
+      updateGuidanceButton();
       lastRouteSearchKey = "";
       routeCoordinates = [];
       nearbyPlacesGeneration += 1;
@@ -1506,12 +1537,12 @@
       document.getElementById("mapDestination").textContent = `Recherche vers ${destinationText}`;
       document.getElementById("mapCard").classList.remove("has-coordinates");
       setPendingInstructions("Recherche du trajet en cours", "Les étapes réelles s’afficheront ici après le calcul.");
-      const destination = destinationOverride || (destinationCoordinates && destinationText === document.getElementById("mapDestination").textContent.replace(/^En route vers /, "")
+      const destination = destinationOverride || (destinationCoordinates && destinationText === resolvedDestinationText
         ? destinationCoordinates
         : await geocodeAddress(destinationText));
       let origin = originOverride;
       if (!origin) {
-        if (!originText || /^ma position/i.test(originText)) {
+        if (!originText || /^(?:ma position|my location|mi ubicaci|mein standort|我的位置)/iu.test(originText)) {
           setRouteStatus("Autorisez l’accès à votre position ou saisissez un point de départ.");
           origin = await getCurrentPosition();
         } else {
@@ -1521,6 +1552,7 @@
       if (generation !== routeGeneration) return null;
       currentCoordinates = origin;
       destinationCoordinates = destination;
+      resolvedDestinationText = destinationText;
       setMapEndpoints(origin, destination);
       document.getElementById("mapDestination").textContent = `En route vers ${destinationText}`;
       if (document.getElementById("accessibilityToggle").getAttribute("aria-checked") === "true") {
@@ -1711,6 +1743,13 @@
         showToast("La lecture vocale n’est pas disponible dans ce navigateur.");
         return false;
       }
+      const epoch = ++speechEpoch;
+      if(activeConversation&&active)setAssistantMessage(voiceGuideText(8),text);
+      if (activeConversation) {
+        conversationWaitingForSpeech = true;
+        window.clearTimeout(conversationRestartTimer);
+        try { conversationRecognition?.abort(); } catch {}
+      }
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       const language = localStorage.getItem("navigueLanguage") || "fr-FR";
@@ -1718,12 +1757,21 @@
       utterance.rate = Number(localStorage.getItem("navigueSpeechRate") || "0.85");
       utterance.pitch = 1;
       utterance.voice = chooseSpeechVoice(language);
-      utterance.onend = () => onEnd?.();
+      let finished = false;
+      const finish = () => {
+        if (finished || epoch !== speechEpoch) return;
+        finished = true;
+        conversationWaitingForSpeech = false;
+        onEnd?.();
+        if (stopConversationAfterReply) stopConversation();
+        else if (activeConversation && !voiceRoutePending) beginConversationListening();
+      };
+      utterance.onend = finish;
       utterance.onerror = (event) => {
         if (event.error !== "canceled" && event.error !== "interrupted") {
           showToast("La lecture vocale a échoué. Touchez le bouton de voix pour réessayer.");
         }
-        onEnd?.();
+        finish();
       };
       window.speechSynthesis.speak(utterance);
       return true;
@@ -1985,6 +2033,7 @@
       }
       document.getElementById("settingsFootnote").textContent = words.footnote;
       document.getElementById("saveSettings").textContent = words.saveSettings;
+      updateGuidanceButton();
       document.dispatchEvent(new Event("navigue:language"));
     }
 
@@ -2013,13 +2062,13 @@
     };
 
     function beginConversationListening() {
-      if (!activeConversation || !conversationRecognition || conversationWaitingForSpeech) return;
+      if (!activeConversation || !conversationRecognition || conversationWaitingForSpeech || voiceRoutePending || window.speechSynthesis?.speaking) return;
       window.clearTimeout(conversationRestartTimer);
       conversationRestartTimer = window.setTimeout(() => {
-        if (!activeConversation || conversationWaitingForSpeech) return;
+        if (!activeConversation || conversationWaitingForSpeech || voiceRoutePending || window.speechSynthesis?.speaking) return;
         try {
           conversationRecognition.start();
-          setAssistantMessage("Je t’écoute.", "Tu peux parler naturellement. Dis « arrête » pour terminer la conversation.");
+          setAssistantMessage(active?voiceGuideText(8):"Je t’écoute.",active?`${currentVoiceInstruction()} ${voiceGuideText(6)}`:"Tu peux parler naturellement. Dis « arrête » pour terminer la conversation.");
         } catch (error) {
           if (error.name !== "InvalidStateError") {
             setAssistantMessage("Je n’arrive pas à écouter pour le moment.", "Vérifie l’autorisation du micro dans les réglages de ton navigateur, puis réessaie.");
@@ -2030,6 +2079,7 @@
     }
 
     function stopConversation() {
+      voiceRouteRequested = false; voiceRoutePending = false;
       pendingConversationDestination = "";
       activeConversation = false;
       conversationWaitingForSpeech = false;
@@ -2051,6 +2101,45 @@
       document.getElementById("conversationButton").textContent = uiText("conversation");
     }
 
+    const VOICE_GUIDE_COPY = {
+      'fr-FR': ['Indique d’abord ta destination.','Le guidage est en pause. Dis « reprends » pour continuer.','Je demande ta position pour démarrer le guidage.','Le guidage est arrêté.','Dis « je suis monté » une fois à bord.','Dis « je suis descendu » après être sorti du transport.','Tu peux dire « étape suivante » si le GPS est imprécis.','GPS indisponible. Dis « guidage manuel » pour suivre les étapes à la voix sans suivi de position.','Je te guide.'],
+      'en-US': ['Tell me your destination first.','Navigation paused. Say “resume” to continue.','Requesting your location to start navigation.','Navigation stopped.','Say “I have boarded” once on board.','Say “I have got off” after leaving the vehicle.','Say “next step” if GPS is inaccurate.','GPS unavailable. Say “manual navigation” to follow the steps by voice without location tracking.','I am guiding you.'],
+      'es-ES': ['Indica primero tu destino.','Navegación en pausa. Di “reanuda” para continuar.','Solicitando ubicación para iniciar la navegación.','Navegación detenida.','Di “ya he subido” cuando estés a bordo.','Di “ya he bajado” al salir del transporte.','Di “siguiente paso” si el GPS es impreciso.','GPS no disponible. Di “navegación manual” para seguir los pasos sin ubicación.','Te estoy guiando.'],
+      'de-DE': ['Nenne zuerst dein Ziel.','Navigation pausiert. Sage „fortsetzen“.','Standort zum Navigationsstart wird angefragt.','Navigation beendet.','Sage „ich bin eingestiegen“, wenn du an Bord bist.','Sage „ich bin ausgestiegen“, nachdem du ausgestiegen bist.','Bei ungenauem GPS sage „nächster Schritt“.','GPS nicht verfügbar. Sage „manuelle Navigation“ für Schritte ohne Standortverfolgung.','Ich führe dich.'],
+      'zh-CN': ['请先告诉我目的地。','导航已暂停，说“继续”即可恢复。','正在请求位置以开始导航。','导航已停止。','上车后请说“我已上车”。','下车后请说“我已下车”。','GPS不准确时可以说“下一步”。','GPS不可用。说“手动导航”可使用语音步骤，不追踪位置。','我正在为你导航。']
+    };
+    const voiceGuideText = index => (VOICE_GUIDE_COPY[uiLanguage()] || VOICE_GUIDE_COPY['fr-FR'])[index];
+    function handleVoiceNavigation(intent) {
+      if (intent.kind === 'stop') { if (active || guidanceState === 'starting') stopGuidance(); return null; }
+      if (intent.kind === 'greeting' && active) return `${voiceGuideText(8)} ${currentVoiceInstruction()}`;
+      if (!['pause','resume','startGuide','stopGuide','boarded','alighted','next','previous','manual'].includes(intent.kind)) return null;
+      if (!activeRoute) return voiceGuideText(0);
+      if (intent.kind === 'stopGuide') { stopGuidance(); voiceRoutePending=false; return voiceGuideText(3); }
+      if (intent.kind === 'pause') { stopGuidance('paused',false); return voiceGuideText(1); }
+      if (intent.kind === 'manual') { document.getElementById('manualGuideButton').click(); return `${guideText(15)} ${currentVoiceInstruction()}`; }
+      if (['resume','startGuide'].includes(intent.kind)) {
+        if (active) return currentVoiceInstruction();
+        voiceRoutePending=true;
+        window.setTimeout(() => {if(activeConversation&&voiceRoutePending)beginGuidance().finally(() => {voiceRoutePending=false;if(!window.speechSynthesis?.speaking)beginConversationListening();});},0);
+        return voiceGuideText(2);
+      }
+      if (!active) return voiceGuideText(1);
+      const kind=guidanceSteps[guidanceIndex]?.kind;
+      if (intent.kind === 'boarded') {
+        if(kind==='wait')advanceGuidance(1,false);
+        if(guidanceSteps[guidanceIndex]?.kind!=='board')return currentVoiceInstruction();
+        advanceGuidance(1,false);
+      } else if (intent.kind === 'alighted') {
+        if(kind!=='ride')return currentVoiceInstruction();
+        advanceGuidance(1,false);
+      } else if (intent.kind === 'next') {
+        if(kind==='board')return voiceGuideText(4);
+        if(kind==='ride')return voiceGuideText(5);
+        advanceGuidance(1,false);
+      } else if (intent.kind === 'previous') advanceGuidance(-1,false);
+      return guidanceState==='arrived'?guideText(13):currentVoiceInstruction();
+    }
+
     const CONVERSATION_COPY = {
       'fr-FR': { greeting: 'Bonjour ! Je suis là avec toi. Où aimerais-tu aller ?', help: 'Dis par exemple « je veux aller au Louvre ». Si tu donnes seulement un lieu, je te demanderai confirmation.', clarify: 'Je n’ai pas identifié une demande de trajet. Dis « je veux aller à » suivi du lieu, ou demande-moi de répéter une consigne.', confirm: (place) => `Tu veux aller à ${place} ? Dis oui pour chercher le trajet, ou non pour annuler.`, cancel: 'D’accord, je ne lance pas de trajet. Où aimerais-tu aller ?', thanks: 'Avec plaisir ! Je suis là si tu as besoin.', stop: 'D’accord, j’arrête de t’écouter. Tu peux me reparler quand tu veux.', route: (place) => `D’accord, je prépare le trajet vers ${place}.` },
       'en-US': { greeting: 'Hello! I’m here with you. Where would you like to go?', help: 'Say “take me to the Louvre”, for example. If you only name a place, I will ask you to confirm.', clarify: 'I did not identify a route request. Say “take me to” followed by a place, or ask me to repeat a direction.', confirm: (place) => `Would you like to go to ${place}? Say yes to find a route, or no to cancel.`, cancel: 'Okay, I won’t start a route. Where would you like to go?', thanks: 'You’re welcome! I’m here if you need me.', stop: 'Okay, I’ll stop listening. You can talk to me again whenever you like.', route: (place) => `Okay, I’m planning your route to ${place}.` },
@@ -2064,6 +2153,18 @@
       const text = rawText.trim().replace(/[.!?,;:¡¿。！？、，；：]+/gu, ' ').replace(/\s+/g, ' ').trim();
       const normalized = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[’']/g, ' ').replace(/[-–—]/g, ' ').replace(/\s+/g, ' ').trim();
       const withoutName = normalized.replace(/^(?:hey |he |ok )?navigue\s*/i, '').replace(/\s+navigue$/i, '').trim();
+      const controls = {
+        manual: /^(?:guidage manuel|sans gps|manual navigation|navegacion manual|manuelle navigation|手动导航)$/u,
+        pause: /^(?:pause|mets? en pause|mettre en pause|pause le guidage|pause navigation|pausa|pausar|暂停)$/u,
+        resume: /^(?:reprends?|reprendre|continue le guidage|resume|resume navigation|reanuda|continuar|fortsetzen|weiter|继续导航|继续)$/u,
+        startGuide: /^(?:demarre(?: le guidage| la navigation)?|commence(?: le guidage)?|guide moi|start navigation|start guidance|iniciar navegacion|navigation starten|开始导航)$/u,
+        stopGuide: /^(?:arrete(?:r)? (?:le guidage|la navigation|le trajet)|stop navigation|stop guidance|detener navegacion|navigation beenden|停止导航)$/u,
+        boarded: /^(?:je suis monte(?:e)?|je suis dans le (?:metro|bus|train|tram)|j ai embarque|i (?:have )?boarded|i am on board|ya he subido|ich bin eingestiegen|我已上车|上车了)$/u,
+        alighted: /^(?:je suis descendu(?:e)?|je suis sorti(?:e)? du (?:metro|bus|train|tram)|i (?:have )?got off|ya he bajado|ich bin ausgestiegen|我已下车|下车了)$/u,
+        next: /^(?:prochaine etape|etape suivante|suivant|j y suis|next step|siguiente paso|naechster schritt|nachster schritt|下一步)$/u,
+        previous: /^(?:etape precedente|reviens en arriere|previous step|paso anterior|vorheriger schritt|上一步)$/u
+      };
+      for (const [kind, pattern] of Object.entries(controls)) if (pattern.test(withoutName)) return {kind};
       if (/^(?:(?:bonjour|salut|coucou|bonsoir|hello|hi|hey|hola|buenos dias|buenas tardes|buenas noches|hallo|guten tag|guten morgen|guten abend)(?: a toi| tout le monde| mon ami| toi| comment ca va| ca va)?|ca va|comment (?:ca va|vas tu|allez vous)|comment tu vas|how are you|como estas|que tal|wie geht(?:s| es dir)|你好|您好|嗨|早上好|晚上好|你好吗)$/u.test(withoutName)) return { kind: 'greeting' };
       if (/^(?:stop|arrete|arret|annule|annuler|au revoir|aurevoir|c est tout|merci c est tout|cancel|goodbye|bye|that s all|cancelar|cancela|adios|parar|stopp|halt|abbrechen|tschuss|auf wiedersehen|停止|停下|取消|再见|结束对话|就这样了)$/u.test(withoutName)) return { kind: 'stop' };
       if (/^(?:oui|ouais|oui vas y|oui c est ca|d accord|ok|okay|yes|yes please|si|vale|ja|是|是的|对|好的|确认)$/u.test(withoutName)) return { kind: 'yes' };
@@ -2092,6 +2193,8 @@
       const language = uiLanguage();
       const words = CONVERSATION_COPY[language] || CONVERSATION_COPY['fr-FR'];
       const intent = parseConversationIntent(rawText);
+      const controlReply = handleVoiceNavigation(intent);
+      if (controlReply !== null) return controlReply;
       if (intent.kind === 'greeting') return words.greeting;
       if (intent.kind === 'thanks') return words.thanks;
       if (intent.kind === 'repeat') return currentVoiceInstruction();
@@ -2113,7 +2216,7 @@
         destination = pendingConversationDestination;
         pendingConversationDestination = '';
         if (!destination) return words.clarify;
-      } else if (intent.kind === 'place') {
+      } else if (intent.kind === 'place' && !conversationAwaitingDestination) {
         pendingConversationDestination = destination;
         return words.confirm(destination);
       } else {
@@ -2133,12 +2236,14 @@
             return "Pour ta sécurité, tu peux choisir une destination préparée par ton parent. Regarde les cartes « Papa », « Maman » ou « Un ami » au-dessus.";
           }
           destinationInput.value = place.address;
+          voiceRouteRequested = true; voiceRoutePending = true;
           const reminder = "Demande à l’adulte qui t’accompagne de vérifier le trajet avec toi. ";
-          window.setTimeout(() => document.getElementById("journeyForm").requestSubmit(), 300);
+          window.setTimeout(() => {if(voiceRouteRequested)document.getElementById("journeyForm").requestSubmit();}, 300);
           return `${reminder}Je prépare le trajet vers ${place.label}.`;
         }
         destinationInput.value = destination;
-        window.setTimeout(() => document.getElementById("journeyForm").requestSubmit(), 300);
+        voiceRouteRequested = true; voiceRoutePending = true;
+        window.setTimeout(() => {if(voiceRouteRequested)document.getElementById("journeyForm").requestSubmit();}, 300);
         return words.route(destination);
       }
       return words.clarify;
@@ -2157,29 +2262,24 @@
       }
       activeConversation = true;
       pendingConversationDestination = "";
-      conversationAwaitingDestination = false;
+      conversationAwaitingDestination = !activeRoute;
+      localStorage.setItem('navigueVoiceEnabled','true');
+      document.getElementById('assistantButton').textContent=uiText('voiceOff');
+      document.getElementById('welcomeSetting').checked=true;
       conversationRecognition = new Recognition();
       conversationRecognition.lang = localStorage.getItem("navigueLanguage") || "fr-FR";
       conversationRecognition.interimResults = false;
       conversationRecognition.continuous = false;
       conversationRecognition.maxAlternatives = 1;
       conversationRecognition.onresult = (event) => {
+        if(conversationWaitingForSpeech||voiceRoutePending)return;
         const language = uiLanguage();
         const userText = event.results?.[0]?.[0]?.transcript || "";
         if (!userText.trim()) return;
         conversationWaitingForSpeech = true;
         const reply = handleConversationInput(userText);
         setAssistantMessage(language === "de-DE" ? "NaVigue antwortet" : language === "zh-CN" ? "NaVigue 正在回答" : "NaVigue te répond", reply);
-        const continueConversation = () => {
-          conversationWaitingForSpeech = false;
-          if (stopConversationAfterReply) {
-            stopConversation();
-            setAssistantMessage("Je suis là si tu as besoin.", "La conversation est terminée. Tu peux me reparler quand tu veux.");
-          } else {
-            beginConversationListening();
-          }
-        };
-        if (!speakText(reply, continueConversation)) continueConversation();
+        if (!speakText(reply)) {conversationWaitingForSpeech=false;beginConversationListening();}
       };
       conversationRecognition.onerror = (event) => {
         if (event.error === "not-allowed" || event.error === "service-not-allowed") {
@@ -2196,11 +2296,18 @@
       };
       document.getElementById("conversationButton").setAttribute("aria-pressed", "true");
       document.getElementById("conversationButton").textContent = uiText("stopConversation");
+      if(activeRoute){
+        if(active){speakText(currentVoiceInstruction());return;}
+        voiceRoutePending=true;
+        speakText(voiceGuideText(2));
+        beginGuidance().finally(()=>{voiceRoutePending=false;if(!window.speechSynthesis?.speaking)beginConversationListening();});
+        return;
+      }
       const greeting = (CONVERSATION_COPY[uiLanguage()] || CONVERSATION_COPY["fr-FR"]).greeting;
       setAssistantMessage(uiLanguage() === "de-DE" ? "NaVigue hört zu" : uiLanguage() === "zh-CN" ? "NaVigue 正在聆听" : "NaVigue est à l’écoute.",
         uiLanguage() === "de-DE" ? "Der Browser fragt möglicherweise nach Mikrofonzugriff. Du kannst das Gespräch jederzeit beenden."
           : uiLanguage() === "zh-CN" ? "浏览器可能会请求麦克风权限。你可以随时结束对话。" : "Le navigateur peut demander l’autorisation du micro. Tu peux arrêter la conversation à tout moment.");
-      if (!speakText(greeting, () => beginConversationListening())) {
+      if (!speakText(greeting)) {
         beginConversationListening();
       }
     }
@@ -2222,6 +2329,22 @@
     }
 
     function currentVoiceInstruction() {
+      const current=guidanceSteps[guidanceIndex];
+      if(current){
+        const lang=Math.max(0,['fr-FR','en-US','es-ES','de-DE','zh-CN'].indexOf(uiLanguage()));
+        if(current.kind==='walk'&&Number.isFinite(current.distance)){
+          const distance=Math.round(current.distance),phrases=[`Continuez sur ${distance} mètres.`,`Continue for ${distance} metres.`,`Continúa ${distance} metros.`,`Gehe ${distance} Meter weiter.`,`继续前进${distance}米。`];
+          const straight=['Continuez','Continue','Continúa','Weiter','继续前进'][lang];
+          if(current.title.startsWith(straight))return `${phrases[lang]} ${current.title.slice(straight.length).replace(/^\s*·\s*/u,'')}`.trim();
+          return `${current.title}. ${phrases[lang]}`;
+        }
+        if(current.kind==='ride'){
+          const destination=activeRoute?.itinerary?.legs?.[current.leg]?.to?.name;
+          const stay=['Restez à bord jusqu’à','Stay on board until','Permanece a bordo hasta','Bleibe an Bord bis','请乘坐至'];
+          return `${destination?`${stay[lang]} ${destination}.`:current.title} ${voiceGuideText(5)}`;
+        }
+        return `${current.title}. ${current.detail||''}`;
+      }
       if (selectedMode === "transit" && activeRoute?.itinerary) {
         const step = document.querySelector("#stepList .step.is-current");
         return step ? `${step.querySelector("strong")?.textContent || ""}. ${step.querySelector("small")?.textContent || ""}` : "Suivez les étapes de transport affichées dans NaVigue.";
@@ -2236,6 +2359,8 @@
     }
 
     function updateMode(mode, button) {
+      stopGuidance();
+      guideWaypoints=[];
       if (kidMode && (mode === "car" || mode === "taxi")) {
         showToast("En mode enfant, demande à un adulte de choisir un autre moyen de transport.");
         return;
@@ -2362,6 +2487,7 @@
 
     document.getElementById("journeyForm").addEventListener("submit", (event) => {
       event.preventDefault();
+      const requestedByVoice=voiceRouteRequested;voiceRouteRequested=false;
       if (kidMode) {
         const destination = document.getElementById("destination").value.trim();
         const normalizePlace = (value) => value.toLocaleLowerCase("fr-FR").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
@@ -2384,6 +2510,7 @@
       }
       findRoute().then((result) => {
         if (!result) {
+          if(requestedByVoice)voiceRoutePending=false;
           setRouteStatus("Le mode de déplacement a changé pendant le calcul. Relancez la recherche.");
           return;
         }
@@ -2394,7 +2521,11 @@
             ? "Itinéraire, horaires et correspondances calculés dans NaVigue par Transitous."
             : "Itinéraire calculé à partir des données OpenStreetMap.");
         if (result.mode === "transit") document.getElementById("transitNote").classList.add("is-visible");
-      }).catch((error) => setRouteStatus(error.message, true)).finally(() => { submit.disabled = false; });
+        if(requestedByVoice&&activeConversation){
+          document.getElementById('mapCard').scrollIntoView({behavior:'smooth',block:'center'});
+          return beginGuidance().finally(()=>{voiceRoutePending=false;if(!window.speechSynthesis?.speaking)beginConversationListening();});
+        }
+      }).catch((error) => {setRouteStatus(error.message,true);if(requestedByVoice&&activeConversation){voiceRoutePending=false;speakText(error.message);}}).finally(() => {submit.disabled=false;if(requestedByVoice)voiceRoutePending=false;});
     });
 
     document.getElementById("swapButton").addEventListener("click", () => {
@@ -2404,83 +2535,30 @@
       showToast("Départ et destination inversés.");
     });
 
-    document.getElementById("startButton").addEventListener("click", async () => {
-      if (selectedMode === "transit") {
-        if (active) {
-          active = false;
-          document.getElementById("mapCard").classList.remove("is-guiding");
-          updateGuidanceButton(false);
-          if ("speechSynthesis" in window) window.speechSynthesis.cancel();
-          setRouteStatus("Guidage en transports mis en pause.");
-          return;
+    async function beginGuidance() {
+      if(active){stopGuidance('paused',false);setRouteStatus(guideText(9));return;}
+      if(!activeRoute)return;
+      const resume=guidanceState==='paused';
+      if(resume&&manualGuidance){active=true;guidanceState='running';document.getElementById('mapCard').classList.add('is-guiding');updateGuidanceButton();setRouteStatus(guideText(15));if(localStorage.getItem('navigueVoiceEnabled')==='true')speakText(currentVoiceInstruction());return;}
+      manualGuidance=false;const token=++guidanceEpoch;guidanceState='starting';updateGuidanceButton();setRouteStatus(guideText(12));
+      try{
+        const point=await getCurrentPosition();if(token!==guidanceEpoch)return;
+        const currentStep=guidanceSteps[guidanceIndex];
+        if(!resume||(currentStep?.kind==='walk'&&nearestRouteDistance(point)>120)){
+          const result=await calculateRoute(point,destinationCoordinates,selectedMode);if(token!==guidanceEpoch||!result)return;
         }
-        if (!activeRoute?.itinerary) {
-          document.getElementById("journeyForm").requestSubmit();
-          return;
-        }
-        active = true;
-        document.getElementById("mapCard").classList.add("is-guiding");
-        updateGuidanceButton(true);
-        if (localStorage.getItem("navigueVoiceEnabled") === "true") speakText(currentVoiceInstruction());
-        setRouteStatus("Guidage en transports activé. Suivez les arrêts, horaires et correspondances affichés dans NaVigue.");
-        return;
-      }
-      if (!activeRoute) {
-        document.getElementById("journeyForm").requestSubmit();
-        return;
-      }
-      if (active) {
-        active = false;
-        if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-        watchId = null;
-        document.getElementById("mapCard").classList.remove("is-guiding");
-        if ("speechSynthesis" in window) window.speechSynthesis.cancel();
-        updateGuidanceButton(false);
-        setRouteStatus("Guidage en pause.");
-        return;
-      }
-      if (!navigator.geolocation) {
-        setRouteStatus("La géolocalisation n’est pas disponible. Le guidage en direct ne peut pas démarrer.", true);
-        return;
-      }
-      setRouteStatus("Demande de position en cours. Autorisez la localisation pour démarrer le guidage.");
-      try {
-        const point = await getCurrentPosition();
-        currentCoordinates = point;
-        await calculateRoute(point, destinationCoordinates, selectedMode);
-        active = true;
-        document.getElementById("origin").value = "Ma position actuelle";
-        document.getElementById("mapCard").classList.add("is-guiding");
-        updateGuidanceButton(true);
-        updateUserMarker(point);
-        if (typeof document.getElementById("vehicleMotion").beginElement === "function") {
-          document.getElementById("vehicleMotion").beginElement();
-        }
-        watchId = navigator.geolocation.watchPosition(
-          handlePositionUpdate,
-          (error) => {
-            const message = error.code === 1
-              ? "Accès à la position refusé. Le guidage en direct est arrêté."
-              : "La position a été perdue. Vérifiez le signal ou arrêtez-vous dans un endroit sûr.";
-            setRouteStatus(message, true);
-            active = false;
-            watchId = null;
-            document.getElementById("mapCard").classList.remove("is-guiding");
-            updateGuidanceButton(false);
-          },
-          { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 }
-        );
-        if (localStorage.getItem("navigueVoiceEnabled") === "true") {
-          speakText(currentVoiceInstruction());
-        }
-        setRouteStatus("Guidage en direct activé. Gardez votre téléphone rangé et suivez les consignes vocales.");
-      } catch (error) {
-        active = false;
-        document.getElementById("mapCard").classList.remove("is-guiding");
-        updateGuidanceButton(false);
-        setRouteStatus(error.message, true);
-      }
-    });
+        if(token!==guidanceEpoch)return;
+        currentCoordinates=point;active=true;guidanceState='running';document.getElementById('mapCard').classList.add('is-guiding');updateUserMarker(point);updateGuidanceButton();
+        watchId=navigator.geolocation.watchPosition(position=>{if(token===guidanceEpoch)handlePositionUpdate(position);},error=>{if(token!==guidanceEpoch)return;if(watchId!==null)navigator.geolocation.clearWatch(watchId);watchId=null;manualGuidance=true;setRouteStatus(guideText(16),true);if(activeConversation)speakText(voiceGuideText(7));},{enableHighAccuracy:true,maximumAge:3000,timeout:20000});
+        setRouteStatus(guideText(11));if(localStorage.getItem('navigueVoiceEnabled')==='true')speakText(currentVoiceInstruction());
+      }catch(error){if(token===guidanceEpoch){stopGuidance('paused',false);setRouteStatus(error.message,true);if(activeConversation){voiceRoutePending=false;speakText(`${error.message} ${voiceGuideText(7)}`);}}}
+     }
+    document.getElementById('startButton').addEventListener('click',beginGuidance);
+    document.getElementById('manualGuideButton').addEventListener('click',()=>{if(!activeRoute)return;guidanceEpoch++;manualGuidance=true;active=true;guidanceState='running';document.getElementById('mapCard').classList.add('is-guiding');updateGuidanceButton();setRouteStatus(guideText(15));});
+    document.getElementById('stopGuideButton').addEventListener('click',()=>{stopGuidance();setRouteStatus(guideText(10));});
+    document.getElementById('nextGuideStep').addEventListener('click',()=>advanceGuidance());
+    document.getElementById('previousGuideStep').addEventListener('click',()=>advanceGuidance(-1));
+    for(const id of ['origin','destination'])document.getElementById(id).addEventListener('input',()=>{stopGuidance();activeRoute=null;updateGuidanceButton();});
 
     document.getElementById("voiceButton").addEventListener("click", () => {
       speakText(currentVoiceInstruction());
@@ -2586,6 +2664,7 @@
     });
 
     document.getElementById("alternativeButton").addEventListener("click", (event) => {
+      stopGuidance();
       if (activeRoute?.itineraries && activeRoute.itineraries.length > 1) {
         activeRoute.itineraryIndex = (activeRoute.itineraryIndex + 1) % activeRoute.itineraries.length;
         activeRoute.itinerary = activeRoute.itineraries[activeRoute.itineraryIndex];
@@ -2783,9 +2862,12 @@
     applyLanguageUI();
     window.NavigueGuide = {
       language: uiLanguage,
+      getPosition: getCurrentPosition,
       isChild: () => kidMode,
       showDirectRoute(plan) {
         if (kidMode) return;
+        stopGuidance();
+        guideWaypoints=plan.via||[];
         if (!leafletMap || !window.L) throw new Error('Carte indisponible');
         routeGeneration++;
         nearbyPlacesGeneration++;
@@ -2800,7 +2882,8 @@
         document.getElementById('destination').value = plan.toText;
         currentCoordinates = plan.origin;
         destinationCoordinates = plan.destination;
-        activeRoute = {origin: plan.origin, destination: plan.destination, mode: 'walk', routes: [plan.direct], routeIndex: 0, route: plan.direct};
+        resolvedDestinationText = plan.toText;
+        activeRoute = {origin: plan.origin, destination: plan.destination, mode: 'walk', via: [...guideWaypoints], routes: [plan.direct], routeIndex: 0, route: plan.direct};
         lastRouteSearchKey = `${plan.fromText.toLocaleLowerCase()}|${plan.toText.toLocaleLowerCase()}`;
         poiLayer?.clearLayers();
         showRouteOption(plan.direct, plan.origin, plan.destination, 'walk');

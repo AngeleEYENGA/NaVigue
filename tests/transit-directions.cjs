@@ -31,6 +31,7 @@ assert.equal(core.walkingSteps(stairLeg).length, 2, 'do not include a corridor i
 const exitLeg = {...leg, steps: [edge([[48,2],[48.001,2]], {exit:'1', streetName:'Rue du Musée'})]};
 assert.match(core.transitSteps({legs:[exitLeg]})[0].title, /sortie 1.*Rue du Musée/);
 assert.ok(!steps.some(step => step.title.includes('sortie')), 'do not invent a numbered exit');
+assert.equal(core.canAdvance({kind:'walk',start:{lat:0,lon:0},target:{lat:0,lon:0.00002}}, {lat:0,lon:0},20,()=>2),false,'uncertain GPS must not skip tiny walking steps');
 assert.match(core.transitSteps({legs:[{mode:'WALK',to:{name:'Gare'}}]})[0].detail,/non fournies/);
 (async () => {
   const itinerary = {legs:[leg]};
